@@ -53,6 +53,7 @@ export default function ImagesPage() {
   const [folderName, setFolderName] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [draggingImageId, setDraggingImageId] = useState<string | null>(null);
+  const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | 'root'>(null);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
@@ -129,10 +130,21 @@ export default function ImagesPage() {
   }
 
   async function handleBulkMove(targetFolderId: string | null) {
+    const folderCount = selectedFolderIds.size;
     const imageCount = selectedImageIds.size;
-    if (imageCount === 0) return;
+    if (folderCount === 0 && imageCount === 0) return;
 
     try {
+      // フォルダを移動
+      for (const folderId of selectedFolderIds) {
+        if (folderId === targetFolderId) continue;
+        await fetch(`/api/admin/folders/${folderId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parent_id: targetFolderId }),
+        });
+      }
+      // 画像を移動
       for (const imageId of selectedImageIds) {
         await fetch(`/api/admin/images/${imageId}`, {
           method: 'PUT',
@@ -551,18 +563,41 @@ export default function ImagesPage() {
   }
 
   function handleImageDragStart(e: React.DragEvent, imageId: string) {
+    // 選択されていない画像をドラッグ開始した場合、その画像のみを対象に
+    // 選択されている画像をドラッグ開始した場合、選択されているすべてのアイテムを対象に
+    if (!selectedImageIds.has(imageId)) {
+      setSelectedImageIds(new Set([imageId]));
+      setSelectedFolderIds(new Set());
+    }
     setDraggingImageId(imageId);
+    setDraggingFolderId(null);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', imageId);
+    e.dataTransfer.setData('text/plain', `image:${imageId}`);
   }
 
-  function handleImageDragEnd() {
+  function handleFolderItemDragStart(e: React.DragEvent, folderId: string) {
+    // 選択されていないフォルダをドラッグ開始した場合、そのフォルダのみを対象に
+    // 選択されているフォルダをドラッグ開始した場合、選択されているすべてのアイテムを対象に
+    if (!selectedFolderIds.has(folderId)) {
+      setSelectedFolderIds(new Set([folderId]));
+      setSelectedImageIds(new Set());
+    }
+    setDraggingFolderId(folderId);
     setDraggingImageId(null);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `folder:${folderId}`);
+  }
+
+  function handleDragEnd() {
+    setDraggingImageId(null);
+    setDraggingFolderId(null);
     setDropTargetFolderId(null);
   }
 
   function handleFolderDragOver(e: React.DragEvent, folderId: string | null) {
-    if (!draggingImageId) return;
+    if (!draggingImageId && !draggingFolderId) return;
+    // フォルダを自分自身や選択中のフォルダにはドロップできない
+    if (draggingFolderId && (folderId === draggingFolderId || selectedFolderIds.has(folderId || ''))) return;
     e.preventDefault();
     e.stopPropagation();
     setDropTargetFolderId(folderId === null ? 'root' : folderId);
@@ -574,13 +609,46 @@ export default function ImagesPage() {
     setDropTargetFolderId(null);
   }
 
-  function handleFolderDrop(e: React.DragEvent, targetFolderId: string | null) {
+  async function handleFolderDrop(e: React.DragEvent, targetFolderId: string | null) {
     e.preventDefault();
     e.stopPropagation();
-    if (draggingImageId) {
-      handleMoveImage(draggingImageId, targetFolderId);
+
+    if (!draggingImageId && !draggingFolderId) return;
+
+    try {
+      // 選択されているすべての画像を移動
+      if (selectedImageIds.size > 0) {
+        for (const imageId of selectedImageIds) {
+          await fetch(`/api/admin/images/${imageId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_id: targetFolderId }),
+          });
+        }
+      }
+
+      // 選択されているすべてのフォルダを移動
+      if (selectedFolderIds.size > 0) {
+        for (const folderId of selectedFolderIds) {
+          // 自分自身へのドロップはスキップ
+          if (folderId === targetFolderId) continue;
+          await fetch(`/api/admin/folders/${folderId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parent_id: targetFolderId }),
+          });
+        }
+      }
+
+      clearSelection();
+      fetchData();
+    } catch (error) {
+      console.error('Failed to move items:', error);
+      alert('移動に失敗しました');
     }
+
     setDraggingImageId(null);
+    setDraggingFolderId(null);
     setDropTargetFolderId(null);
   }
 
@@ -801,14 +869,12 @@ export default function ImagesPage() {
             >
               すべて選択
             </button>
-            {selectedImageIds.size > 0 && (
-              <button
-                onClick={() => setShowMoveModal(true)}
-                className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-              >
-                移動
-              </button>
-            )}
+            <button
+              onClick={() => setShowMoveModal(true)}
+              className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+            >
+              移動
+            </button>
             <button
               onClick={clearSelection}
               className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
@@ -830,13 +896,17 @@ export default function ImagesPage() {
           {folders.map((folder) => (
             <div
               key={`folder-${folder.id}`}
+              draggable
+              onDragStart={(e) => handleFolderItemDragStart(e, folder.id)}
+              onDragEnd={handleDragEnd}
               className={`relative bg-white rounded-lg shadow hover:shadow-md cursor-pointer group ${
-                dropTargetFolderId === folder.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-              } ${selectedFolderIds.has(folder.id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
+                dropTargetFolderId === folder.id && !selectedFolderIds.has(folder.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+              } ${draggingFolderId && selectedFolderIds.has(folder.id) ? 'opacity-50 ring-2 ring-blue-500' : ''}
+              ${selectedFolderIds.has(folder.id) && !draggingFolderId ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
               onDragOver={(e) => handleFolderDragOver(e, folder.id)}
               onDragLeave={handleFolderDragLeave}
               onDrop={(e) => handleFolderDrop(e, folder.id)}
-              onClick={() => setCurrentFolderId(folder.id)}
+              onClick={() => !draggingFolderId && setCurrentFolderId(folder.id)}
             >
               <div
                 onClick={(e) => toggleFolderSelection(folder.id, e)}
@@ -881,10 +951,10 @@ export default function ImagesPage() {
               key={`image-${image.id}`}
               draggable
               onDragStart={(e) => handleImageDragStart(e, image.id)}
-              onDragEnd={handleImageDragEnd}
+              onDragEnd={handleDragEnd}
               className={`relative bg-white rounded-lg shadow hover:shadow-md group cursor-grab active:cursor-grabbing ${
-                draggingImageId === image.id ? 'opacity-50 ring-2 ring-blue-500' : ''
-              } ${selectedImageIds.has(image.id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
+                (draggingImageId || draggingFolderId) && selectedImageIds.has(image.id) ? 'opacity-50 ring-2 ring-blue-500' : ''
+              } ${selectedImageIds.has(image.id) && !draggingImageId && !draggingFolderId ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
             >
               <div
                 onClick={(e) => toggleImageSelection(image.id, e)}
@@ -1233,7 +1303,10 @@ export default function ImagesPage() {
               移動先を選択
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              {selectedImageIds.size}枚の画像を移動します
+              {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
+              {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
+              {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
+              を移動します
             </p>
             <div className="space-y-1 max-h-60 overflow-y-auto border rounded-lg p-2">
               <button
