@@ -20,13 +20,6 @@ export async function PUT(
     const body = await request.json();
     const { name, parent_id } = body;
 
-    if (!name) {
-      return NextResponse.json(
-        { success: false, error: 'フォルダ名は必須です' },
-        { status: 400 }
-      );
-    }
-
     // 自分自身を親にはできない
     if (parent_id === id) {
       return NextResponse.json(
@@ -37,12 +30,14 @@ export async function PUT(
 
     const supabase = createServiceClient();
 
+    // 更新するフィールドを動的に構築
+    const updateData: { name?: string; parent_id?: string | null } = {};
+    if (name !== undefined) updateData.name = name;
+    if (parent_id !== undefined) updateData.parent_id = parent_id || null;
+
     const { data, error } = await supabase
       .from('folders')
-      .update({
-        name,
-        parent_id: parent_id || null,
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
