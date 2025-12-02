@@ -47,6 +47,13 @@ export default function WatermarkVerifyPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Vercelのサーバーレス関数の制限（4.5MB）
+    const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      setErrorModal(`ファイルサイズが大きすぎます。\n\n現在のサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB\n上限: 4.5MB\n\n画像を縮小してから再度お試しください。`);
+      return;
+    }
+
     // プレビュー表示
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
