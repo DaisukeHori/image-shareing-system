@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import HelpTip from '@/components/HelpTip';
 
 interface Folder {
   id: string;
@@ -379,7 +380,10 @@ export default function ImagesPage() {
     <div>
       {/* ヘッダー部分 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">画像管理</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">画像管理</h1>
+          <HelpTip content="画像をアップロードし、ユーザーごとにアクセス権限を設定します。フォルダごとの一括アップロードや権限設定も可能です。" />
+        </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
           <select
             value={selectedFolder}
@@ -427,9 +431,12 @@ export default function ImagesPage() {
       {/* フォルダ権限設定ボタン */}
       {selectedFolder && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <span className="text-sm text-gray-600">
-            フォルダ: {folders.find((f) => f.id === selectedFolder)?.name}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              フォルダ: {folders.find((f) => f.id === selectedFolder)?.name}
+            </span>
+            <HelpTip content="フォルダ権限を設定すると、そのフォルダ内のすべての画像に自動的にアクセス権限が付与されます。個別の画像権限設定は不要になります。" />
+          </div>
           <button
             onClick={() => {
               const folder = folders.find((f) => f.id === selectedFolder);

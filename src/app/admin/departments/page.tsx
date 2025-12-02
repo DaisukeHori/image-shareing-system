@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import HelpTip from '@/components/HelpTip';
 
 interface User {
   id: string;
@@ -167,7 +168,10 @@ export default function DepartmentsPage() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">所属管理</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">所属管理</h1>
+          <HelpTip content="ユーザーの所属部署を管理します。所属長を設定すると、その所属のユーザーからの申請を承認できます。" />
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleExport}
@@ -225,8 +229,9 @@ export default function DepartmentsPage() {
       )}
 
       {/* CSVフォーマット説明 */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-        CSVフォーマット: 所属名,所属長メールアドレス
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+        <span>CSVフォーマット: 所属名,所属長メールアドレス</span>
+        <HelpTip content="同じ所属名がある場合は所属長のみ更新されます。所属長はユーザーとして先に登録されている必要があります。" />
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import HelpTip from '@/components/HelpTip';
 
 interface Department {
   id: string;
@@ -188,7 +189,10 @@ export default function UsersPage() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ユーザー管理</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ユーザー管理</h1>
+          <HelpTip content="Azure ADに登録されているメールアドレスを持つユーザーを登録します。CSVで一括登録・更新も可能です。" />
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleExport}
@@ -246,8 +250,9 @@ export default function UsersPage() {
       )}
 
       {/* CSVフォーマット説明 */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-        CSVフォーマット: メールアドレス,名前,所属名,権限(admin/user),社長(はい/いいえ),有効(はい/いいえ)
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+        <span>CSVフォーマット: メールアドレス,名前,所属名,権限(admin/user),社長(はい/いいえ),有効(はい/いいえ)</span>
+        <HelpTip content="所属名が存在しない場合は自動的に作成されます。権限は「admin」または「管理者」で管理者に設定できます。" />
       </div>
 
       {/* モバイル用カードビュー */}

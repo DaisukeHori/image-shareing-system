@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import HelpTip from '@/components/HelpTip';
 
 interface Image {
   id: string;
@@ -202,7 +203,7 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* タブ */}
-        <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
           <button
             onClick={() => setActiveTab('images')}
             className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
@@ -228,6 +229,7 @@ export default function Home() {
               </span>
             )}
           </button>
+          <HelpTip content="画像を選んで利用申請を送信します。承認後7日以内に1回だけダウンロードできます。ダウンロード画像には電子透かしが埋め込まれます。" />
         </div>
 
         {activeTab === 'images' ? (
