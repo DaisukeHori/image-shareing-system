@@ -54,8 +54,77 @@ export default function ImagesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [draggingImageId, setDraggingImageId] = useState<string | null>(null);
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | 'root'>(null);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
+  const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // 選択をクリア（フォルダ移動時など）
+  useEffect(() => {
+    setSelectedFolderIds(new Set());
+    setSelectedImageIds(new Set());
+  }, [currentFolderId]);
+
+  function toggleFolderSelection(folderId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedFolderIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleImageSelection(imageId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedImageIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+  }
+
+  function selectAll() {
+    setSelectedFolderIds(new Set(folders.map(f => f.id)));
+    setSelectedImageIds(new Set(images.map(i => i.id)));
+  }
+
+  function clearSelection() {
+    setSelectedFolderIds(new Set());
+    setSelectedImageIds(new Set());
+  }
+
+  async function handleBulkDelete() {
+    const folderCount = selectedFolderIds.size;
+    const imageCount = selectedImageIds.size;
+    if (folderCount === 0 && imageCount === 0) return;
+
+    const message = `${folderCount > 0 ? `${folderCount}個のフォルダ` : ''}${folderCount > 0 && imageCount > 0 ? 'と' : ''}${imageCount > 0 ? `${imageCount}枚の画像` : ''}を削除しますか？`;
+    if (!confirm(message)) return;
+
+    try {
+      // フォルダを削除
+      for (const folderId of selectedFolderIds) {
+        await fetch(`/api/admin/folders/${folderId}`, { method: 'DELETE' });
+      }
+      // 画像を削除
+      for (const imageId of selectedImageIds) {
+        await fetch(`/api/admin/images/${imageId}`, { method: 'DELETE' });
+      }
+      clearSelection();
+      fetchData();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      alert('一括削除に失敗しました');
+    }
+  }
 
   useEffect(() => {
     fetchData();
@@ -642,29 +711,33 @@ export default function ImagesPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4 text-sm overflow-x-auto pb-2">
+      <div className="flex items-center gap-1 mb-4 text-sm overflow-x-auto pb-2 bg-gray-100 rounded-lg px-3 py-2">
         <button
           onClick={() => setCurrentFolderId(null)}
           onDragOver={(e) => handleFolderDragOver(e, null)}
           onDragLeave={handleFolderDragLeave}
           onDrop={(e) => handleFolderDrop(e, null)}
-          className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap transition-all ${
-            !currentFolderId ? 'font-bold text-blue-600' : 'text-gray-600'
-          } ${dropTargetFolderId === 'root' ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-md whitespace-nowrap ${
+            !currentFolderId
+              ? 'bg-blue-600 text-white font-medium shadow-sm'
+              : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+          } ${dropTargetFolderId === 'root' ? 'ring-2 ring-blue-400 ring-offset-1' : ''}`}
         >
           🏠 ルート
         </button>
         {breadcrumbs.map((folder, index) => (
-          <span key={folder.id} className="flex items-center gap-2">
-            <span className="text-gray-400">/</span>
+          <span key={folder.id} className="flex items-center gap-1">
+            <span className="text-gray-400 mx-1">›</span>
             <button
               onClick={() => setCurrentFolderId(folder.id)}
               onDragOver={(e) => handleFolderDragOver(e, folder.id)}
               onDragLeave={handleFolderDragLeave}
               onDrop={(e) => handleFolderDrop(e, folder.id)}
-              className={`px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap transition-all ${
-                index === breadcrumbs.length - 1 ? 'font-bold text-blue-600' : 'text-gray-600'
-              } ${dropTargetFolderId === folder.id ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
+              className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
+                index === breadcrumbs.length - 1
+                  ? 'bg-blue-600 text-white font-medium shadow-sm'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+              } ${dropTargetFolderId === folder.id ? 'ring-2 ring-blue-400 ring-offset-1' : ''}`}
             >
               📁 {folder.name}
             </button>
@@ -689,26 +762,70 @@ export default function ImagesPage() {
         </div>
       )}
 
+      {/* 一括操作バー */}
+      {(selectedFolderIds.size > 0 || selectedImageIds.size > 0) && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-blue-700 font-medium">
+            {selectedFolderIds.size + selectedImageIds.size}件選択中
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={selectAll}
+              className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
+            >
+              すべて選択
+            </button>
+            <button
+              onClick={clearSelection}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+            >
+              選択解除
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+            >
+              一括削除
+            </button>
+          </div>
+        </div>
+      )}
+
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {folders.map((folder) => (
             <div
               key={`folder-${folder.id}`}
-              className={`bg-white rounded-lg shadow hover:shadow-md transition-all cursor-pointer group ${
+              className={`relative bg-white rounded-lg shadow hover:shadow-md cursor-pointer group ${
                 dropTargetFolderId === folder.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-              }`}
+              } ${selectedFolderIds.has(folder.id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
               onDragOver={(e) => handleFolderDragOver(e, folder.id)}
               onDragLeave={handleFolderDragLeave}
               onDrop={(e) => handleFolderDrop(e, folder.id)}
+              onClick={() => setCurrentFolderId(folder.id)}
             >
               <div
-                onClick={() => setCurrentFolderId(folder.id)}
-                className="p-4 text-center"
+                onClick={(e) => toggleFolderSelection(folder.id, e)}
+                className={`absolute top-1 left-1 w-6 h-6 flex items-center justify-center rounded border-2 cursor-pointer z-10 ${
+                  selectedFolderIds.has(folder.id)
+                    ? 'bg-blue-500 border-blue-500 text-white'
+                    : 'bg-white border-gray-300 opacity-0 group-hover:opacity-100'
+                }`}
               >
+                {selectedFolderIds.has(folder.id) && '✓'}
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center text-xs bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 z-10"
+                title="削除"
+              >
+                ✕
+              </button>
+              <div className="p-4 text-center">
                 <div className="text-5xl mb-2">{dropTargetFolderId === folder.id ? '📂' : '📁'}</div>
                 <p className="text-sm font-medium text-gray-900 truncate">{folder.name}</p>
               </div>
-              <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100">
                 <button
                   onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setFolderName(folder.name); setShowFolderModal(true); }}
                   className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
@@ -721,12 +838,6 @@ export default function ImagesPage() {
                 >
                   権限
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                >
-                  削除
-                </button>
               </div>
             </div>
           ))}
@@ -737,10 +848,27 @@ export default function ImagesPage() {
               draggable
               onDragStart={(e) => handleImageDragStart(e, image.id)}
               onDragEnd={handleImageDragEnd}
-              className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing ${
+              className={`relative bg-white rounded-lg shadow hover:shadow-md group cursor-grab active:cursor-grabbing ${
                 draggingImageId === image.id ? 'opacity-50 ring-2 ring-blue-500' : ''
-              }`}
+              } ${selectedImageIds.has(image.id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
             >
+              <div
+                onClick={(e) => toggleImageSelection(image.id, e)}
+                className={`absolute top-1 left-1 w-6 h-6 flex items-center justify-center rounded border-2 cursor-pointer z-10 ${
+                  selectedImageIds.has(image.id)
+                    ? 'bg-blue-500 border-blue-500 text-white'
+                    : 'bg-white border-gray-300 opacity-0 group-hover:opacity-100'
+                }`}
+              >
+                {selectedImageIds.has(image.id) && '✓'}
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteImage(image.id); }}
+                className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center text-xs bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 z-10"
+                title="削除"
+              >
+                ✕
+              </button>
               <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-100">
                 <img
                   src={getImageUrl(image.storage_path)}
@@ -756,18 +884,12 @@ export default function ImagesPage() {
                   {image.permissions?.length || 0}人に許可
                 </p>
               </div>
-              <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100">
                 <button
                   onClick={() => openPermissionModal(image)}
                   className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
                   権限
-                </button>
-                <button
-                  onClick={() => handleDeleteImage(image.id)}
-                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                >
-                  削除
                 </button>
               </div>
             </div>
@@ -785,6 +907,24 @@ export default function ImagesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-10">
+                  <div
+                    onClick={() => {
+                      if (selectedFolderIds.size + selectedImageIds.size === folders.length + images.length) {
+                        clearSelection();
+                      } else {
+                        selectAll();
+                      }
+                    }}
+                    className={`w-5 h-5 flex items-center justify-center rounded border-2 cursor-pointer ${
+                      selectedFolderIds.size + selectedImageIds.size === folders.length + images.length && folders.length + images.length > 0
+                        ? 'bg-blue-500 border-blue-500 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
+                  >
+                    {selectedFolderIds.size + selectedImageIds.size === folders.length + images.length && folders.length + images.length > 0 && '✓'}
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">名前</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">タイプ</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">権限</th>
@@ -795,14 +935,26 @@ export default function ImagesPage() {
               {folders.map((folder) => (
                 <tr
                   key={`folder-${folder.id}`}
-                  className={`hover:bg-gray-50 cursor-pointer transition-all ${
+                  className={`hover:bg-gray-50 cursor-pointer ${
                     dropTargetFolderId === folder.id ? 'bg-blue-50 ring-2 ring-inset ring-blue-500' : ''
-                  }`}
+                  } ${selectedFolderIds.has(folder.id) ? 'bg-blue-50' : ''}`}
                   onClick={() => setCurrentFolderId(folder.id)}
                   onDragOver={(e) => handleFolderDragOver(e, folder.id)}
                   onDragLeave={handleFolderDragLeave}
                   onDrop={(e) => handleFolderDrop(e, folder.id)}
                 >
+                  <td className="px-4 py-3">
+                    <div
+                      onClick={(e) => toggleFolderSelection(folder.id, e)}
+                      className={`w-5 h-5 flex items-center justify-center rounded border-2 cursor-pointer ${
+                        selectedFolderIds.has(folder.id)
+                          ? 'bg-blue-500 border-blue-500 text-white'
+                          : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      {selectedFolderIds.has(folder.id) && '✓'}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">{dropTargetFolderId === folder.id ? '📂' : '📁'}</span>
@@ -811,12 +963,18 @@ export default function ImagesPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">フォルダ</td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">-</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setFolderName(folder.name); setShowFolderModal(true); }}
-                      className="text-blue-600 hover:text-blue-800 text-sm mr-2"
+                      className="text-blue-600 hover:text-blue-800 text-sm mr-3"
                     >
                       編集
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openFolderPermissionModal(folder); }}
+                      className="text-purple-600 hover:text-purple-800 text-sm mr-3"
+                    >
+                      権限
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
@@ -835,8 +993,20 @@ export default function ImagesPage() {
                   onDragEnd={handleImageDragEnd}
                   className={`hover:bg-gray-50 cursor-grab active:cursor-grabbing ${
                     draggingImageId === image.id ? 'opacity-50 bg-blue-50' : ''
-                  }`}
+                  } ${selectedImageIds.has(image.id) ? 'bg-blue-50' : ''}`}
                 >
+                  <td className="px-4 py-3">
+                    <div
+                      onClick={(e) => toggleImageSelection(image.id, e)}
+                      className={`w-5 h-5 flex items-center justify-center rounded border-2 cursor-pointer ${
+                        selectedImageIds.has(image.id)
+                          ? 'bg-blue-500 border-blue-500 text-white'
+                          : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      {selectedImageIds.has(image.id) && '✓'}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <img
@@ -853,10 +1023,10 @@ export default function ImagesPage() {
                   <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">
                     {image.permissions?.length || 0}人
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
                       onClick={() => openPermissionModal(image)}
-                      className="text-blue-600 hover:text-blue-800 text-sm mr-2"
+                      className="text-blue-600 hover:text-blue-800 text-sm mr-3"
                     >
                       権限
                     </button>
@@ -871,7 +1041,7 @@ export default function ImagesPage() {
               ))}
               {folders.length === 0 && images.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-16 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-16 text-center text-gray-500">
                     フォルダまたは画像をドラッグ＆ドロップしてアップロード
                   </td>
                 </tr>
