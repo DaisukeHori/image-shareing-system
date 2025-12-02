@@ -142,6 +142,14 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // URLパラメータでタブを切り替え
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'requests') {
+      setActiveTab('requests');
+    }
+  }, []);
+
   // 同意書表示時の10秒タイマー
   useEffect(() => {
     if (requestStep === 2 && consentStartTime) {

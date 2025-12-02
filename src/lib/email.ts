@@ -368,7 +368,7 @@ export async function sendApprovalResultEmail(
         isApproved
           ? `
         <p>
-          <a href="${appUrl}"
+          <a href="${appUrl}?tab=requests"
              style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
             画像をダウンロード
           </a>

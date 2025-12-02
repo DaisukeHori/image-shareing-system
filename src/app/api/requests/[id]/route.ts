@@ -36,7 +36,7 @@ export async function DELETE(
     // 申請を取得して所有者とステータスを確認
     const { data: approvalRequest, error: requestError } = await supabase
       .from('approval_requests')
-      .select('id, requester_id, status')
+      .select('id, user_id, status')
       .eq('id', requestId)
       .single();
 
@@ -48,7 +48,7 @@ export async function DELETE(
     }
 
     // 申請者本人かどうか確認
-    if (approvalRequest.requester_id !== user.id) {
+    if (approvalRequest.user_id !== user.id) {
       return NextResponse.json(
         { success: false, error: '自分の申請のみキャンセルできます' },
         { status: 403 }
