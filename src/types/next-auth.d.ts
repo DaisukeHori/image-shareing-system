@@ -27,9 +27,15 @@ declare module 'next-auth' {
 
 declare module 'next-auth/jwt' {
   interface JWT extends DefaultJWT {
+    userId?: string;
     role?: 'admin' | 'user';
     isCeo?: boolean;
     departmentId?: string | null;
     azureAdId?: string;
+    department?: {
+      id: string;
+      name: string;
+      manager_user_id: string | null;
+    } | null;
   }
 }

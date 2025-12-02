@@ -65,51 +65,64 @@ export const authConfig: NextAuthConfig = {
       }
     },
     async jwt({ token, user, account }) {
+      // 初回サインイン時にAzure AD情報を保存
       if (user && account) {
         token.email = user.email;
         token.azureAdId = account.providerAccountId;
       }
-      return token;
-    },
-    async session({ session, token }) {
+
+      // 毎回DBからユーザー情報を取得（role変更を即反映）
       if (token.email) {
         try {
           const supabase = createServiceClient();
 
-          // DBからユーザー情報を取得
-          const { data: dbUser } = await supabase
+          const { data: dbUser, error } = await supabase
             .from('users')
-            .select(`
-              id,
-              email,
-              name,
-              role,
-              is_ceo,
-              department_id,
-              departments (
-                id,
-                name,
-                manager_user_id
-              )
-            `)
+            .select('id, email, name, role, is_ceo, department_id')
             .eq('email', (token.email as string).toLowerCase())
             .single();
 
-          if (dbUser) {
-            session.user = {
-              ...session.user,
-              id: dbUser.id,
-              email: dbUser.email,
-              name: dbUser.name,
-              role: dbUser.role,
-              isCeo: dbUser.is_ceo,
-              departmentId: dbUser.department_id,
-              department: dbUser.departments,
-            };
+          if (dbUser && !error) {
+            token.userId = dbUser.id;
+            token.name = dbUser.name;
+            token.role = dbUser.role;
+            token.isCeo = dbUser.is_ceo;
+            token.departmentId = dbUser.department_id;
+
+            // 部署情報を別途取得
+            if (dbUser.department_id) {
+              const { data: dept } = await supabase
+                .from('departments')
+                .select('id, name, manager_user_id')
+                .eq('id', dbUser.department_id)
+                .single();
+
+              if (dept) {
+                token.department = dept;
+              }
+            } else {
+              token.department = null;
+            }
           }
         } catch (error) {
-          console.error('Session callback error:', error);
+          console.error('JWT callback error:', error);
         }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // トークンからセッションにユーザー情報をコピー
+      if (token) {
+        session.user = {
+          ...session.user,
+          id: token.userId as string,
+          email: token.email as string,
+          name: token.name as string,
+          role: (token.role as 'admin' | 'user') || 'user',
+          isCeo: (token.isCeo as boolean) || false,
+          departmentId: (token.departmentId as string) || null,
+          department: (token.department as { id: string; name: string; manager_user_id: string | null }) || null,
+        };
       }
       return session;
     },
