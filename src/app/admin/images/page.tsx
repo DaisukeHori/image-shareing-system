@@ -501,7 +501,7 @@ export default function ImagesPage() {
   }
 
   function getImageUrl(storagePath: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${storagePath}`;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
   }
 
   if (loading) {
@@ -831,22 +831,26 @@ export default function ImagesPage() {
             <p className="text-sm text-gray-500 mb-4">{selectedImage.original_filename}</p>
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
               {users.map((user) => (
-                <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                <div
+                  key={user.id}
+                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer select-none"
+                  onClick={() => {
+                    setSelectedUserIds(prev =>
+                      prev.includes(user.id)
+                        ? prev.filter(id => id !== user.id)
+                        : [...prev, user.id]
+                    );
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={selectedUserIds.includes(user.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedUserIds([...selectedUserIds, user.id]);
-                      } else {
-                        setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
-                      }
-                    }}
-                    className="w-5 h-5 cursor-pointer accent-blue-600"
+                    readOnly
+                    className="w-5 h-5 pointer-events-none accent-blue-600"
                   />
                   <span className="text-sm text-gray-900">{user.name}</span>
                   <span className="text-xs text-gray-500">{user.email}</span>
-                </label>
+                </div>
               ))}
             </div>
             <div className="mt-4 flex justify-end gap-3">
@@ -879,22 +883,26 @@ export default function ImagesPage() {
             </p>
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
               {users.map((user) => (
-                <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                <div
+                  key={user.id}
+                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer select-none"
+                  onClick={() => {
+                    setSelectedUserIds(prev =>
+                      prev.includes(user.id)
+                        ? prev.filter(id => id !== user.id)
+                        : [...prev, user.id]
+                    );
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={selectedUserIds.includes(user.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedUserIds([...selectedUserIds, user.id]);
-                      } else {
-                        setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
-                      }
-                    }}
-                    className="w-5 h-5 cursor-pointer accent-blue-600"
+                    readOnly
+                    className="w-5 h-5 pointer-events-none accent-blue-600"
                   />
                   <span className="text-sm text-gray-900">{user.name}</span>
                   <span className="text-xs text-gray-500">{user.email}</span>
-                </label>
+                </div>
               ))}
             </div>
             <div className="mt-4 flex justify-end gap-3">

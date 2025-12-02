@@ -9,8 +9,7 @@ const navigation = [
   { name: 'ダッシュボード', href: '/admin' },
   { name: '所属管理', href: '/admin/departments' },
   { name: 'ユーザー管理', href: '/admin/users' },
-  { name: 'フォルダ管理', href: '/admin/folders' },
-  { name: '画像管理', href: '/admin/images' },
+  { name: 'ファイル管理', href: '/admin/images' },
   { name: '承認申請一覧', href: '/admin/requests' },
   { name: '透かし検証', href: '/admin/watermark' },
 ];
