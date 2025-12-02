@@ -32,6 +32,34 @@ function getImagePublicUrl(storagePath: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
 }
 
+/**
+ * Bulletproof email button generator
+ * Uses padding + border method for maximum email client compatibility
+ * Works in Gmail, Outlook, Apple Mail, and mobile clients
+ */
+function createEmailButton(
+  href: string,
+  text: string,
+  bgColor: string,
+  options?: { width?: string }
+): string {
+  const widthStyle = options?.width ? `width: ${options.width};` : '';
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; ${widthStyle}">
+      <tr>
+        <td align="center" style="border-radius: 8px; background-color: ${bgColor};">
+          <a href="${href}" target="_blank" rel="noopener"
+             style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 8px; border: 1px solid ${bgColor}; mso-padding-alt: 0;">
+            <!--[if mso]><i style="mso-font-width:150%;mso-text-raise:30pt" hidden>&emsp;</i><span style="mso-text-raise:15pt;"><![endif]-->
+            ${text}
+            <!--[if mso]></span><i style="mso-font-width:150%;" hidden>&emsp;&#8203;</i><![endif]-->
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
 interface User {
   id: string;
   name: string;
@@ -177,28 +205,10 @@ export async function sendApprovalRequestEmail(
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
             <tr>
               <td style="padding-right: 10px;">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                  <tr>
-                    <td style="background-color: #22c55e; border-radius: 8px;">
-                      <a href="${approveUrl}" target="_blank"
-                         style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
-                        ✓ 承認する
-                      </a>
-                    </td>
-                  </tr>
-                </table>
+                ${createEmailButton(approveUrl, '✓ 承認する', '#22c55e')}
               </td>
               <td style="padding-left: 10px;">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                  <tr>
-                    <td style="background-color: #ef4444; border-radius: 8px;">
-                      <a href="${rejectUrl}" target="_blank"
-                         style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
-                        ✕ 却下する
-                      </a>
-                    </td>
-                  </tr>
-                </table>
+                ${createEmailButton(rejectUrl, '✕ 却下する', '#ef4444')}
               </td>
             </tr>
           </table>
@@ -302,16 +312,7 @@ export async function sendRequestConfirmationEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
-          <tr>
-            <td style="background-color: #2563eb; border-radius: 8px;">
-              <a href="${appUrl}?tab=requests" target="_blank"
-                 style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
-                申請履歴を確認する
-              </a>
-            </td>
-          </tr>
-        </table>
+        ${createEmailButton(`${appUrl}?tab=requests`, '申請履歴を確認する', '#2563eb')}
       </div>
 
       <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
@@ -396,16 +397,7 @@ export async function sendApprovalResultEmail(
         isApproved
           ? `
         <div style="margin: 30px 0; text-align: center;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
-            <tr>
-              <td style="background-color: #22c55e; border-radius: 8px;">
-                <a href="${appUrl}?tab=requests" target="_blank"
-                   style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
-                  画像をダウンロード
-                </a>
-              </td>
-            </tr>
-          </table>
+          ${createEmailButton(`${appUrl}?tab=requests`, '画像をダウンロード', '#22c55e')}
         </div>
 
         <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
@@ -506,16 +498,7 @@ export async function sendDeletionReminderEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
-          <tr>
-            <td style="background-color: #2563eb; border-radius: 8px;">
-              <a href="${confirmUrl}" target="_blank"
-                 style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
-                削除を確認する（${roleLabel}）
-              </a>
-            </td>
-          </tr>
-        </table>
+        ${createEmailButton(confirmUrl, `削除を確認する（${roleLabel}）`, '#2563eb')}
       </div>
 
       <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">

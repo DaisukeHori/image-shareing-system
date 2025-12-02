@@ -43,16 +43,61 @@ export default function WatermarkVerifyPage() {
   const [errorModal, setErrorModal] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * 透かしデータは画像の最初の数百ピクセルにのみ埋め込まれているため、
+   * 大きな画像でも上部400行だけを切り取って送信することでサイズを削減
+   */
+  async function extractWatermarkRegion(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+
+        // 透かしデータは画像の上部に埋め込まれている
+        // 400行あれば十分（透かしデータは通常数百バイト程度）
+        const WATERMARK_ROWS = 400;
+        const cropHeight = Math.min(WATERMARK_ROWS, img.height);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = cropHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context not available'));
+          return;
+        }
+
+        // 画像の上部だけを描画
+        ctx.drawImage(img, 0, 0, img.width, cropHeight, 0, 0, img.width, cropHeight);
+
+        // PNGとしてエクスポート（無損失圧縮で透かしを保持）
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob'));
+            }
+          },
+          'image/png'
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+
+      img.src = url;
+    });
+  }
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Vercelのサーバーレス関数の制限（4.5MB）
-    const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      setErrorModal(`ファイルサイズが大きすぎます。\n\n現在のサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB\n上限: 4.5MB\n\n画像を縮小してから再度お試しください。`);
-      return;
-    }
 
     // プレビュー表示
     const url = URL.createObjectURL(file);
@@ -61,8 +106,22 @@ export default function WatermarkVerifyPage() {
     setLoading(true);
 
     try {
+      // 大きな画像の場合、透かし領域だけを抽出して送信
+      // これにより12MBの画像でも数百KBに削減可能
+      let fileToSend: Blob = file;
+
+      if (file.size > 2 * 1024 * 1024) { // 2MB以上の場合は切り取り
+        try {
+          fileToSend = await extractWatermarkRegion(file);
+          console.log(`Image cropped: ${(file.size / 1024 / 1024).toFixed(2)}MB -> ${(fileToSend.size / 1024).toFixed(0)}KB`);
+        } catch (cropError) {
+          console.warn('Failed to crop image, using original:', cropError);
+          // 切り取りに失敗した場合は元のファイルを使用
+        }
+      }
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', fileToSend, file.name);
 
       const res = await fetch('/api/admin/watermark/verify', {
         method: 'POST',
