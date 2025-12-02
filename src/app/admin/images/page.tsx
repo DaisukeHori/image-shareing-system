@@ -457,6 +457,68 @@ export default function ImagesPage() {
     return allowedTypes.includes(file.type) || file.type.startsWith('image/') || file.type.startsWith('video/');
   }
 
+  // 直接Supabase Storageにアップロード（署名付きURL使用）
+  async function uploadFileDirectly(file: File, folderId: string | null): Promise<{ success: boolean; error?: string }> {
+    try {
+      // 1. 署名付きURLを取得
+      const urlRes = await fetch('/api/admin/images/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+          folderId,
+        }),
+      });
+
+      const urlData = await urlRes.json();
+      if (!urlData.success) {
+        return { success: false, error: urlData.error || 'URL取得失敗' };
+      }
+
+      // 2. 署名付きURLを使ってSupabaseに直接アップロード
+      const { signedUrl, path, filename, originalFilename, contentType, fileSize, isVideo } = urlData.data;
+
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        return { success: false, error: `アップロード失敗 (${uploadRes.status})` };
+      }
+
+      // 3. DBに登録
+      const registerRes = await fetch('/api/admin/images/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path,
+          filename,
+          originalFilename,
+          contentType,
+          fileSize,
+          folderId,
+          isVideo,
+        }),
+      });
+
+      const registerData = await registerRes.json();
+      if (!registerData.success) {
+        return { success: false, error: registerData.error || '登録失敗' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Direct upload error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'アップロードエラー' };
+    }
+  }
+
   async function uploadFiles(files: File[]) {
     // クライアント側でファイルをフィルタリング
     const validFiles: File[] = [];
@@ -485,62 +547,16 @@ export default function ImagesPage() {
     const errors: string[] = [];
     let completedCount = 0;
 
-    // 単一ファイルのアップロード関数
+    // 単一ファイルのアップロード関数（直接アップロード方式）
     async function uploadSingleFile(file: File): Promise<void> {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (currentFolderId) {
-        formData.append('folder_id', currentFolderId);
-      }
-
       try {
-        // タイムアウトをファイルサイズに応じて設定（最小60秒、1MB毎に+2秒、最大5分）
-        const timeoutMs = Math.min(300000, Math.max(60000, 60000 + (file.size / 1024 / 1024) * 2000));
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-        const res = await fetch('/api/admin/images', {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // レスポンスがJSONかどうかをチェック
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          // サーバーがHTMLエラーを返した場合
-          if (res.status === 413) {
-            errors.push(`${file.name}: ファイルサイズが大きすぎます（サーバー制限超過）`);
-          } else if (res.status === 504 || res.status === 502) {
-            errors.push(`${file.name}: サーバーがタイムアウトしました`);
-          } else {
-            errors.push(`${file.name}: サーバーエラー (${res.status})`);
-          }
-          return;
+        const result = await uploadFileDirectly(file, currentFolderId);
+        if (!result.success) {
+          errors.push(`${file.name}: ${result.error}`);
         }
-
-        const data = await res.json();
-        if (!data.success) {
-          const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-        }
-      } catch (fetchError) {
-        let errorMsg = `${file.name}: `;
-        if (fetchError instanceof Error) {
-          if (fetchError.name === 'AbortError') {
-            errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
-          } else if (fetchError.message.includes('Unexpected token')) {
-            errorMsg += 'サーバーエラー（ファイルサイズが大きすぎる可能性）';
-          } else {
-            errorMsg += fetchError.message || 'ネットワークエラー';
-          }
-        } else {
-          errorMsg += 'ネットワークエラー';
-        }
-        console.error(errorMsg, fetchError);
+      } catch (error) {
+        const errorMsg = `${file.name}: ${error instanceof Error ? error.message : 'アップロードエラー'}`;
+        console.error(errorMsg, error);
         errors.push(errorMsg);
       } finally {
         completedCount++;
@@ -606,62 +622,16 @@ export default function ImagesPage() {
     let completedCount = 0;
     setUploadProgress({ current: 0, total: totalFiles });
 
-    // 単一ファイルのアップロード関数
+    // 単一ファイルのアップロード関数（直接アップロード方式）
     async function uploadSingleFile(file: File, targetFolderId: string | null): Promise<void> {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (targetFolderId) {
-        formData.append('folder_id', targetFolderId);
-      }
-
       try {
-        // タイムアウトをファイルサイズに応じて設定
-        const timeoutMs = Math.min(300000, Math.max(60000, 60000 + (file.size / 1024 / 1024) * 2000));
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-        const res = await fetch('/api/admin/images', {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // レスポンスがJSONかどうかをチェック
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          // サーバーがHTMLエラーを返した場合
-          if (res.status === 413) {
-            errors.push(`${file.name}: ファイルサイズが大きすぎます（サーバー制限超過）`);
-          } else if (res.status === 504 || res.status === 502) {
-            errors.push(`${file.name}: サーバーがタイムアウトしました`);
-          } else {
-            errors.push(`${file.name}: サーバーエラー (${res.status})`);
-          }
-          return;
+        const result = await uploadFileDirectly(file, targetFolderId);
+        if (!result.success) {
+          errors.push(`${file.name}: ${result.error}`);
         }
-
-        const data = await res.json();
-        if (!data.success) {
-          const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-        }
-      } catch (fetchError) {
-        let errorMsg = `${file.name}: `;
-        if (fetchError instanceof Error) {
-          if (fetchError.name === 'AbortError') {
-            errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
-          } else if (fetchError.message.includes('Unexpected token')) {
-            errorMsg += 'サーバーエラー（ファイルサイズが大きすぎる可能性）';
-          } else {
-            errorMsg += fetchError.message || 'ネットワークエラー';
-          }
-        } else {
-          errorMsg += 'ネットワークエラー';
-        }
-        console.error(errorMsg, fetchError);
+      } catch (error) {
+        const errorMsg = `${file.name}: ${error instanceof Error ? error.message : 'アップロードエラー'}`;
+        console.error(errorMsg, error);
         errors.push(errorMsg);
       } finally {
         completedCount++;
