@@ -1064,7 +1064,7 @@ export default function ImagesPage() {
         setShowFolderPermissionModal(false);
         setEditingFolder(null);
         // フォルダリストを更新
-        fetchFolders();
+        fetchData();
       } else {
         alert(data.error || 'エラーが発生しました');
       }
