@@ -57,11 +57,20 @@ export async function POST(request: NextRequest) {
         file_size: fileSize || 0,
         mime_type: contentType,
         file_type: isVideo ? 'video' : 'image',
+        processing_status: isVideo ? 'pending' : 'none',
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // 動画の場合はEdge Functionを呼び出してサムネイル生成
+    if (isVideo && data) {
+      // 非同期でEdge Functionを呼び出す（レスポンスを待たない）
+      triggerVideoProcessing(data.id, path, fileSize || 0).catch(err => {
+        console.error('Failed to trigger video processing:', err);
+      });
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
@@ -70,5 +79,38 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'ファイル登録に失敗しました' },
       { status: 500 }
     );
+  }
+}
+
+// 動画処理をトリガーする関数
+async function triggerVideoProcessing(imageId: string, storagePath: string, fileSize: number) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase configuration');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/process-video`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        imageId,
+        storagePath,
+        fileSize,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Video processing trigger failed:', errorText);
+    }
+  } catch (error) {
+    console.error('Error triggering video processing:', error);
   }
 }

@@ -13,6 +13,8 @@ interface Image {
   id: string;
   original_filename: string;
   storage_path: string;
+  file_type?: 'image' | 'video';
+  mime_type?: string;
 }
 
 type PurposeType = 'hotpepper' | 'website' | 'sns' | 'print' | 'other';
@@ -67,7 +69,7 @@ export default function RequestsPage() {
   const [approverComment, setApproverComment] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [detailModal, setDetailModal] = useState<ApprovalRequest | null>(null);
-  const [previewImage, setPreviewImage] = useState<{ url: string; filename: string } | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; filename: string; isVideo: boolean } | null>(null);
   const [resultModal, setResultModal] = useState<{ type: 'approve' | 'reject'; requestNumber: string } | null>(null);
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
 
@@ -214,6 +216,10 @@ export default function RequestsPage() {
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
   }
 
+  function isVideo(image: Image) {
+    return image.file_type === 'video' || image.mime_type?.startsWith('video/');
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -287,15 +293,33 @@ export default function RequestsPage() {
             }`}
           >
             <div className="flex gap-3 mb-3">
-              <img
-                src={getImageUrl(request.image.storage_path)}
-                alt=""
-                className="w-16 h-16 rounded object-cover flex-shrink-0 cursor-pointer"
-                onClick={() => setPreviewImage({
-                  url: getImageUrl(request.image.storage_path),
-                  filename: request.image.original_filename
-                })}
-              />
+              {isVideo(request.image) ? (
+                <div
+                  className="w-16 h-16 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex-shrink-0 cursor-pointer flex items-center justify-center relative"
+                  onClick={() => setPreviewImage({
+                    url: getImageUrl(request.image.storage_path),
+                    filename: request.image.original_filename,
+                    isVideo: true
+                  })}
+                >
+                  <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={getImageUrl(request.image.storage_path)}
+                  alt=""
+                  className="w-16 h-16 rounded object-cover flex-shrink-0 cursor-pointer"
+                  onClick={() => setPreviewImage({
+                    url: getImageUrl(request.image.storage_path),
+                    filename: request.image.original_filename,
+                    isVideo: false
+                  })}
+                />
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <button
@@ -468,15 +492,31 @@ export default function RequestsPage() {
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <img
-                      src={getImageUrl(request.image.storage_path)}
-                      alt=""
-                      className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => setPreviewImage({
-                        url: getImageUrl(request.image.storage_path),
-                        filename: request.image.original_filename
-                      })}
-                    />
+                    {isVideo(request.image) ? (
+                      <div
+                        className="w-10 h-10 rounded bg-gradient-to-br from-gray-700 to-gray-900 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                        onClick={() => setPreviewImage({
+                          url: getImageUrl(request.image.storage_path),
+                          filename: request.image.original_filename,
+                          isVideo: true
+                        })}
+                      >
+                        <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <img
+                        src={getImageUrl(request.image.storage_path)}
+                        alt=""
+                        className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setPreviewImage({
+                          url: getImageUrl(request.image.storage_path),
+                          filename: request.image.original_filename,
+                          isVideo: false
+                        })}
+                      />
+                    )}
                     <span className="ml-2 text-sm text-gray-500 max-w-[100px] truncate">
                       {request.image.original_filename}
                     </span>
@@ -729,11 +769,33 @@ export default function RequestsPage() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <img
-                  src={getImageUrl(detailModal.image.storage_path)}
-                  alt=""
-                  className="w-20 h-20 rounded object-cover"
-                />
+                {isVideo(detailModal.image) ? (
+                  <div
+                    className="w-20 h-20 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center cursor-pointer"
+                    onClick={() => setPreviewImage({
+                      url: getImageUrl(detailModal.image.storage_path),
+                      filename: detailModal.image.original_filename,
+                      isVideo: true
+                    })}
+                  >
+                    <div className="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={getImageUrl(detailModal.image.storage_path)}
+                    alt=""
+                    className="w-20 h-20 rounded object-cover cursor-pointer"
+                    onClick={() => setPreviewImage({
+                      url: getImageUrl(detailModal.image.storage_path),
+                      filename: detailModal.image.original_filename,
+                      isVideo: false
+                    })}
+                  />
+                )}
                 <div>
                   <p className="text-sm font-medium text-gray-900">{detailModal.image.original_filename}</p>
                   <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${statusLabels[detailModal.status].class}`}>
@@ -813,7 +875,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* 画像プレビューモーダル */}
+      {/* 画像/動画プレビューモーダル */}
       {previewImage && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
@@ -828,12 +890,31 @@ export default function RequestsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <div className="max-w-full max-h-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={previewImage.url}
-              alt={previewImage.filename}
-              className="max-w-full max-h-[80vh] object-contain rounded-lg"
-            />
+          <div
+            className="max-w-full max-h-full flex flex-col items-center select-none"
+            style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            {previewImage.isVideo ? (
+              <video
+                src={previewImage.url}
+                controls
+                autoPlay
+                playsInline
+                controlsList="nodownload"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg"
+                onContextMenu={(e) => e.preventDefault()}
+              />
+            ) : (
+              <img
+                src={previewImage.url}
+                alt={previewImage.filename}
+                className="max-w-full max-h-[80vh] object-contain rounded-lg"
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+              />
+            )}
             <p className="mt-4 text-white text-sm text-center">{previewImage.filename}</p>
           </div>
         </div>

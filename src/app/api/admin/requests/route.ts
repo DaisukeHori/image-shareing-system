@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
         image:images (
           id,
           original_filename,
-          storage_path
+          storage_path,
+          file_type,
+          mime_type
         ),
         approver:users!approval_requests_approved_by_fkey (
           id,
