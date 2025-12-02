@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           id,
           name,
           email,
-          department:departments (
+          department:departments!users_department_id_fkey (
             name
           )
         ),

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
           id,
           name,
           email,
-          department:departments (
+          department:departments!users_department_id_fkey (
             id,
             name
           )

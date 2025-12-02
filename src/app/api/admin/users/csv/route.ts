@@ -23,7 +23,7 @@ export async function GET() {
         role,
         is_ceo,
         is_active,
-        department:departments (
+        department:departments!users_department_id_fkey (
           name
         )
       `)

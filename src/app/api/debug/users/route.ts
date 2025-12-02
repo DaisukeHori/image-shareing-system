@@ -27,7 +27,7 @@ export async function GET() {
       .from('users')
       .select(`
         *,
-        department:departments (
+        department:departments!users_department_id_fkey (
           id,
           name
         )
