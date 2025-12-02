@@ -47,12 +47,228 @@ export default function ImagesPage() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
   }, [selectedFolder]);
+
+  // ドラッグ＆ドロップハンドラー
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // 子要素からのleaveイベントを無視
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragOver(false);
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (uploading) return;
+
+    const items = e.dataTransfer.items;
+    const files: File[] = [];
+    const folderFiles: { folderName: string; file: File }[] = [];
+
+    // DataTransferItemsを処理
+    if (items && items.length > 0) {
+      const entries: FileSystemEntry[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const entry = item.webkitGetAsEntry?.();
+          if (entry) {
+            entries.push(entry);
+          }
+        }
+      }
+
+      // エントリを再帰的に処理
+      for (const entry of entries) {
+        if (entry.isFile) {
+          const file = await getFileFromEntry(entry as FileSystemFileEntry);
+          if (file && file.type.startsWith('image/')) {
+            files.push(file);
+          }
+        } else if (entry.isDirectory) {
+          const dirFiles = await readDirectoryEntry(entry as FileSystemDirectoryEntry, entry.name);
+          folderFiles.push(...dirFiles);
+        }
+      }
+    }
+
+    // フォルダがドロップされた場合
+    if (folderFiles.length > 0) {
+      await uploadFolderFiles(folderFiles);
+    }
+    // 画像ファイルのみの場合
+    else if (files.length > 0) {
+      await uploadFiles(files);
+    }
+  }
+
+  // FileSystemFileEntryからFileを取得
+  function getFileFromEntry(entry: FileSystemFileEntry): Promise<File | null> {
+    return new Promise((resolve) => {
+      entry.file(
+        (file) => resolve(file),
+        () => resolve(null)
+      );
+    });
+  }
+
+  // ディレクトリエントリを再帰的に読み取り
+  async function readDirectoryEntry(
+    dirEntry: FileSystemDirectoryEntry,
+    folderName: string
+  ): Promise<{ folderName: string; file: File }[]> {
+    const results: { folderName: string; file: File }[] = [];
+    const reader = dirEntry.createReader();
+
+    const readEntries = (): Promise<FileSystemEntry[]> => {
+      return new Promise((resolve, reject) => {
+        reader.readEntries(resolve, reject);
+      });
+    };
+
+    let entries = await readEntries();
+    while (entries.length > 0) {
+      for (const entry of entries) {
+        if (entry.isFile) {
+          const file = await getFileFromEntry(entry as FileSystemFileEntry);
+          if (file && file.type.startsWith('image/')) {
+            results.push({ folderName, file });
+          }
+        }
+      }
+      entries = await readEntries();
+    }
+
+    return results;
+  }
+
+  // 複数ファイルをアップロード
+  async function uploadFiles(files: File[]) {
+    setUploading(true);
+    setUploadProgress({ current: 0, total: files.length });
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadProgress({ current: i + 1, total: files.length });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        if (selectedFolder) {
+          formData.append('folder_id', selectedFolder);
+        }
+
+        const res = await fetch('/api/admin/images', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          console.error(`${file.name}: ${data.error}`);
+        }
+      }
+      fetchData();
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('アップロードに失敗しました');
+    } finally {
+      setUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+    }
+  }
+
+  // フォルダファイルをアップロード（フォルダを作成してからアップロード）
+  async function uploadFolderFiles(folderFiles: { folderName: string; file: File }[]) {
+    // フォルダ名でグループ化
+    const folderGroups = new Map<string, File[]>();
+    for (const { folderName, file } of folderFiles) {
+      if (!folderGroups.has(folderName)) {
+        folderGroups.set(folderName, []);
+      }
+      folderGroups.get(folderName)!.push(file);
+    }
+
+    setUploading(true);
+    const totalFiles = folderFiles.length;
+    let uploadedCount = 0;
+    setUploadProgress({ current: 0, total: totalFiles });
+
+    try {
+      for (const [folderName, files] of folderGroups) {
+        // フォルダを作成
+        let targetFolderId = selectedFolder;
+        try {
+          const folderRes = await fetch('/api/admin/folders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: folderName,
+              parent_id: selectedFolder || null,
+            }),
+          });
+
+          const folderData = await folderRes.json();
+          if (folderData.success) {
+            targetFolderId = folderData.data.id;
+          }
+        } catch (error) {
+          console.error('Failed to create folder:', error);
+        }
+
+        // ファイルをアップロード
+        for (const file of files) {
+          uploadedCount++;
+          setUploadProgress({ current: uploadedCount, total: totalFiles });
+
+          const formData = new FormData();
+          formData.append('file', file);
+          if (targetFolderId) {
+            formData.append('folder_id', targetFolderId);
+          }
+
+          const res = await fetch('/api/admin/images', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (!data.success) {
+            console.error(`${file.name}: ${data.error}`);
+          }
+        }
+      }
+      fetchData();
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('アップロードに失敗しました');
+    } finally {
+      setUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+    }
+  }
 
   async function fetchData() {
     try {
@@ -377,7 +593,26 @@ export default function ImagesPage() {
   }
 
   return (
-    <div>
+    <div
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative min-h-[calc(100vh-200px)]"
+    >
+      {/* ドラッグオーバーレイ */}
+      {isDragOver && (
+        <div className="absolute inset-0 bg-blue-500 bg-opacity-20 border-4 border-dashed border-blue-500 rounded-lg z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-white rounded-lg p-8 shadow-lg text-center">
+            <svg className="w-16 h-16 mx-auto text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p className="text-xl font-bold text-gray-900">ドロップしてアップロード</p>
+            <p className="text-sm text-gray-500 mt-2">画像ファイルまたはフォルダをドロップできます</p>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー部分 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-2">
@@ -399,8 +634,8 @@ export default function ImagesPage() {
           </select>
 
           <div className="flex gap-2">
-            <label className="flex-1 sm:flex-none px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer text-sm text-center">
-              {uploading ? `${uploadProgress.current}/${uploadProgress.total}` : '画像'}
+            <label className="flex-1 sm:flex-none px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer text-sm text-center whitespace-nowrap">
+              {uploading ? `アップロード中 ${uploadProgress.current}/${uploadProgress.total}` : '画像アップロード（複数可）'}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -411,8 +646,8 @@ export default function ImagesPage() {
                 className="hidden"
               />
             </label>
-            <label className="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer text-sm text-center">
-              {uploading ? '...' : 'フォルダ'}
+            <label className="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer text-sm text-center whitespace-nowrap">
+              {uploading ? '...' : 'フォルダごと'}
               <input
                 ref={folderInputRef}
                 type="file"
