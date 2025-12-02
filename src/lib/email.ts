@@ -290,10 +290,16 @@ export async function sendRequestConfirmationEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        <a href="${appUrl}"
-           style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-          申請履歴を確認する
-        </a>
+        <table role="presentation" style="margin: 0 auto;">
+          <tr>
+            <td>
+              <a href="${appUrl}?tab=requests"
+                 style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                申請履歴を確認する
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
 
       <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
@@ -340,14 +346,14 @@ export async function sendApprovalResultEmail(
   const isApproved = request.status === 'approved';
 
   const emailContent = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
+      <h2 style="color: #333; border-bottom: 2px solid ${isApproved ? '#22c55e' : '#ef4444'}; padding-bottom: 10px;">
         カットモデル画像 利用申請 ${isApproved ? '承認' : '却下'}
       </h2>
 
-      <p>${requester.name} 様</p>
+      <p style="color: #333; font-size: 16px;">${requester.name} 様</p>
 
-      <p>
+      <p style="color: #333; font-size: 16px;">
         申請番号 <strong>${request.request_number}</strong> の画像利用申請が
         <strong style="color: ${isApproved ? '#22c55e' : '#ef4444'};">
           ${isApproved ? '承認' : '却下'}
@@ -355,36 +361,60 @@ export async function sendApprovalResultEmail(
         されました。
       </p>
 
-      <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
-        <p><strong>承認者:</strong> ${approver.name}</p>
-        ${
-          !isApproved && request.rejection_reason
-            ? `<p><strong>却下理由:</strong> ${request.rejection_reason}</p>`
-            : ''
-        }
+      <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #64748b; width: 100px;">承認者:</td>
+            <td style="padding: 8px 0; color: #1e293b; font-weight: bold;">${approver.name}</td>
+          </tr>
+          ${
+            !isApproved && request.rejection_reason
+              ? `
+          <tr>
+            <td style="padding: 8px 0; color: #64748b; vertical-align: top;">却下理由:</td>
+            <td style="padding: 8px 0; color: #dc2626;">${request.rejection_reason}</td>
+          </tr>
+          `
+              : ''
+          }
+        </table>
       </div>
 
       ${
         isApproved
           ? `
-        <p>
-          <a href="${appUrl}?tab=requests"
-             style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
-            画像をダウンロード
-          </a>
-        </p>
+        <div style="margin: 30px 0; text-align: center;">
+          <table role="presentation" style="margin: 0 auto;">
+            <tr>
+              <td>
+                <a href="${appUrl}?tab=requests"
+                   style="display: inline-block; padding: 14px 28px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                  画像をダウンロード
+                </a>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-        <p style="color: #666; font-size: 14px;">
-          ※承認後7日以内に1回のみダウンロード可能です。<br>
-          ※ダウンロードした画像には電子透かしが入ります。
-        </p>
+        <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="color: #0369a1; font-size: 13px; margin: 0;">
+            ※承認後7日以内に1回のみダウンロード可能です。<br>
+            ※ダウンロードした画像には電子透かしが入ります。
+          </p>
+        </div>
       `
-          : ''
+          : `
+        <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="color: #dc2626; font-size: 13px; margin: 0;">
+            申請は却下されました。内容を確認の上、必要に応じて再申請してください。
+          </p>
+        </div>
+      `
       }
 
-      <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
 
-      <p style="color: #999; font-size: 12px;">
+      <p style="color: #94a3b8; font-size: 12px; text-align: center;">
         このメールはレボル カットモデル画像管理システムから自動送信されています。
       </p>
     </div>
@@ -423,23 +453,37 @@ export async function sendDeletionReminderEmail(
   const formattedDate = new Date(usageEndDate).toLocaleDateString('ja-JP');
 
   const emailContent = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #dc2626;">【重要】レンタルフォト削除確認のお願い</h2>
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
+      <h2 style="color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">【重要】レンタルフォト削除確認のお願い</h2>
 
-      <p>
+      <p style="color: #333; font-size: 16px;">
         以下のレンタルフォトの掲載期限が過ぎています。<br>
         該当するデータを削除し、確認ボタンを押してください。
       </p>
 
-      <div style="background: #fef2f2; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #fecaca;">
-        <p><strong>申請番号:</strong> ${requestNumber}</p>
-        <p><strong>申請者:</strong> ${userName}</p>
-        <p><strong>ファイル名:</strong> ${imageName}</p>
-        <p><strong style="color: #dc2626;">掲載終了日:</strong> ${formattedDate}</p>
+      <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #fecaca;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #64748b; width: 120px;">申請番号:</td>
+            <td style="padding: 8px 0; color: #1e293b; font-weight: bold;">${requestNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;">申請者:</td>
+            <td style="padding: 8px 0; color: #1e293b;">${userName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;">ファイル名:</td>
+            <td style="padding: 8px 0; color: #1e293b;">${imageName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #dc2626; font-weight: bold;">掲載終了日:</td>
+            <td style="padding: 8px 0; color: #dc2626; font-weight: bold;">${formattedDate}</td>
+          </tr>
+        </table>
       </div>
 
-      <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #fde68a;">
-        <p style="color: #92400e; font-weight: bold; margin-bottom: 8px;">削除すべきデータ:</p>
+      <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #fde68a;">
+        <p style="color: #92400e; font-weight: bold; margin: 0 0 8px 0;">削除すべきデータ:</p>
         <ul style="color: #92400e; margin: 0; padding-left: 20px;">
           <li>パソコン内のデータ</li>
           <li>スマートフォン内のデータ</li>
@@ -449,20 +493,28 @@ export async function sendDeletionReminderEmail(
         </ul>
       </div>
 
-      <p style="text-align: center; margin: 24px 0;">
-        <a href="${confirmUrl}"
-           style="display: inline-block; padding: 14px 32px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-          削除を確認する（${roleLabel}）
-        </a>
-      </p>
+      <div style="margin: 30px 0; text-align: center;">
+        <table role="presentation" style="margin: 0 auto;">
+          <tr>
+            <td>
+              <a href="${confirmUrl}"
+                 style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                削除を確認する（${roleLabel}）
+              </a>
+            </td>
+          </tr>
+        </table>
+      </div>
 
-      <p style="color: #dc2626; font-size: 14px; font-weight: bold;">
-        ※ ${roleLabel}と${role === 'user' ? '承認者' : '申請者'}の両方が確認するまで、毎日このメールが送信されます。
-      </p>
+      <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+        <p style="color: #dc2626; font-size: 13px; margin: 0; font-weight: bold;">
+          ※ ${roleLabel}と${role === 'user' ? '承認者' : '申請者'}の両方が確認するまで、毎日このメールが送信されます。
+        </p>
+      </div>
 
-      <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
 
-      <p style="color: #999; font-size: 12px;">
+      <p style="color: #94a3b8; font-size: 12px; text-align: center;">
         このメールはレボル カットモデル画像管理システムから自動送信されています。
       </p>
     </div>
