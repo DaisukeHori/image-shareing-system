@@ -9,11 +9,27 @@ interface ApprovalRequest {
   id: string;
   request_number: string;
   purpose: string;
+  purpose_type?: string | null;
+  purpose_other?: string | null;
+  usage_end_date?: string | null;
+  requester_comment?: string | null;
   image: {
     id: string;
     original_filename: string;
     storage_path: string;
   };
+}
+
+const purposeTypeLabels: Record<string, string> = {
+  hotpepper: 'ホットペッパービューティー',
+  website: '公式HP/ブログ',
+  sns: '公式SNS',
+  print: 'チラシ・DM・POP等',
+  other: 'その他',
+};
+
+function getImagePublicUrl(storagePath: string): string {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
 }
 
 interface User {
@@ -94,41 +110,98 @@ export async function sendApprovalRequestEmail(
 
     const approveUrl = `${appUrl}/api/approval/action?token=${approveToken}`;
     const rejectUrl = `${appUrl}/api/approval/action?token=${rejectToken}`;
+    const imageUrl = getImagePublicUrl(request.image.storage_path);
+
+    // 利用目的の表示文字列を構築
+    let purposeDisplay = '';
+    if (request.purpose_type && request.purpose_type !== 'other') {
+      purposeDisplay = purposeTypeLabels[request.purpose_type] || request.purpose_type;
+    } else if (request.purpose_type === 'other' && request.purpose_other) {
+      purposeDisplay = `その他: ${request.purpose_other}`;
+    } else {
+      purposeDisplay = request.purpose;
+    }
+
+    // 掲載終了日のフォーマット
+    const usageEndDateDisplay = request.usage_end_date
+      ? new Date(request.usage_end_date).toLocaleDateString('ja-JP')
+      : '未設定';
 
     const emailContent = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">カットモデル画像 利用申請</h2>
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
+        <h2 style="color: #333; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">カットモデル画像 利用申請</h2>
 
-        <p>以下の画像利用申請が届いています。</p>
+        <p style="color: #333; font-size: 16px;">以下の画像利用申請が届いています。</p>
 
-        <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
-          <p><strong>申請番号:</strong> ${request.request_number}</p>
-          <p><strong>申請者:</strong> ${requester.name}</p>
-          <p><strong>所属:</strong> ${requester.department?.name || '未所属'}</p>
-          <p><strong>画像:</strong> ${request.image.original_filename}</p>
-          <p><strong>利用目的:</strong></p>
-          <p style="white-space: pre-wrap;">${request.purpose}</p>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; width: 120px;">申請番号:</td>
+              <td style="padding: 8px 0; color: #1e293b; font-weight: bold;">${request.request_number}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">申請者:</td>
+              <td style="padding: 8px 0; color: #1e293b;">${requester.name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">所属:</td>
+              <td style="padding: 8px 0; color: #1e293b;">${requester.department?.name || '未所属'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">利用目的:</td>
+              <td style="padding: 8px 0; color: #1e293b;">${purposeDisplay}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">掲載終了日:</td>
+              <td style="padding: 8px 0; color: #1e293b;">${usageEndDateDisplay}</td>
+            </tr>
+          </table>
         </div>
 
-        <div style="margin: 24px 0;">
-          <a href="${approveUrl}"
-             style="display: inline-block; padding: 12px 24px; background: #22c55e; color: white; text-decoration: none; border-radius: 6px; margin-right: 12px;">
-            承認する
-          </a>
-          <a href="${rejectUrl}"
-             style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px;">
-            却下する
-          </a>
+        ${request.requester_comment ? `
+        <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #fde68a;">
+          <p style="color: #92400e; font-weight: bold; margin: 0 0 8px 0;">📝 申請者からのコメント:</p>
+          <p style="color: #78350f; margin: 0; white-space: pre-wrap;">${request.requester_comment}</p>
+        </div>
+        ` : ''}
+
+        <div style="margin: 20px 0;">
+          <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">申請画像:</p>
+          <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; text-align: center;">
+            <img src="${imageUrl}" alt="${request.image.original_filename}" style="max-width: 100%; max-height: 300px; border-radius: 4px; object-fit: contain;">
+            <p style="color: #64748b; font-size: 12px; margin: 8px 0 0 0;">${request.image.original_filename}</p>
+          </div>
         </div>
 
-        <p style="color: #666; font-size: 14px;">
-          ※このリンクは7日間有効です。<br>
-          ※いずれかの承認者が承認した時点で申請は承認されます。
-        </p>
+        <div style="margin: 30px 0; text-align: center;">
+          <table role="presentation" style="margin: 0 auto;">
+            <tr>
+              <td style="padding-right: 10px;">
+                <a href="${approveUrl}"
+                   style="display: inline-block; padding: 14px 28px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                  ✓ 承認する
+                </a>
+              </td>
+              <td style="padding-left: 10px;">
+                <a href="${rejectUrl}"
+                   style="display: inline-block; padding: 14px 28px; background-color: #ef4444; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                  ✕ 却下する
+                </a>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-        <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+        <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="color: #0369a1; font-size: 13px; margin: 0;">
+            ※このリンクは7日間有効です。<br>
+            ※いずれかの承認者が承認した時点で申請は承認されます。
+          </p>
+        </div>
 
-        <p style="color: #999; font-size: 12px;">
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">
           このメールはレボル カットモデル画像管理システムから自動送信されています。
         </p>
       </div>
@@ -147,6 +220,109 @@ export async function sendApprovalRequestEmail(
       console.error(`Failed to send email to ${approver.email}:`, error);
       throw error;
     }
+  }
+}
+
+export async function sendRequestConfirmationEmail(
+  request: ApprovalRequest,
+  requester: User
+) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const imageUrl = getImagePublicUrl(request.image.storage_path);
+
+  // 利用目的の表示文字列を構築
+  let purposeDisplay = '';
+  if (request.purpose_type && request.purpose_type !== 'other') {
+    purposeDisplay = purposeTypeLabels[request.purpose_type] || request.purpose_type;
+  } else if (request.purpose_type === 'other' && request.purpose_other) {
+    purposeDisplay = `その他: ${request.purpose_other}`;
+  } else {
+    purposeDisplay = request.purpose;
+  }
+
+  // 掲載終了日のフォーマット
+  const usageEndDateDisplay = request.usage_end_date
+    ? new Date(request.usage_end_date).toLocaleDateString('ja-JP')
+    : '未設定';
+
+  const emailContent = `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
+      <h2 style="color: #333; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">カットモデル画像 利用申請を受け付けました</h2>
+
+      <p style="color: #333; font-size: 16px;">${requester.name} 様</p>
+
+      <p style="color: #333; font-size: 16px;">以下の内容で利用申請を受け付けました。承認者の審査をお待ちください。</p>
+
+      <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #64748b; width: 120px;">申請番号:</td>
+            <td style="padding: 8px 0; color: #1e293b; font-weight: bold;">${request.request_number}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;">所属:</td>
+            <td style="padding: 8px 0; color: #1e293b;">${requester.department?.name || '未所属'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;">利用目的:</td>
+            <td style="padding: 8px 0; color: #1e293b;">${purposeDisplay}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;">掲載終了日:</td>
+            <td style="padding: 8px 0; color: #1e293b;">${usageEndDateDisplay}</td>
+          </tr>
+        </table>
+      </div>
+
+      ${request.requester_comment ? `
+      <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #fde68a;">
+        <p style="color: #92400e; font-weight: bold; margin: 0 0 8px 0;">📝 申請時のコメント:</p>
+        <p style="color: #78350f; margin: 0; white-space: pre-wrap;">${request.requester_comment}</p>
+      </div>
+      ` : ''}
+
+      <div style="margin: 20px 0;">
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">申請画像:</p>
+        <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; text-align: center;">
+          <img src="${imageUrl}" alt="${request.image.original_filename}" style="max-width: 100%; max-height: 300px; border-radius: 4px; object-fit: contain;">
+          <p style="color: #64748b; font-size: 12px; margin: 8px 0 0 0;">${request.image.original_filename}</p>
+        </div>
+      </div>
+
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="${appUrl}"
+           style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+          申請履歴を確認する
+        </a>
+      </div>
+
+      <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+        <p style="color: #0369a1; font-size: 13px; margin: 0;">
+          ※承認結果はメールでお知らせします。<br>
+          ※承認待ち状態の申請は、サイト上からキャンセルすることができます。
+        </p>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+
+      <p style="color: #94a3b8; font-size: 12px; text-align: center;">
+        このメールはレボル カットモデル画像管理システムから自動送信されています。
+      </p>
+    </div>
+  `;
+
+  try {
+    await sgMail.send({
+      to: requester.email,
+      from: process.env.SENDGRID_FROM_EMAIL!,
+      subject: `【申請受付】カットモデル画像利用申請 (${request.request_number})`,
+      html: emailContent,
+    });
+
+    console.log(`Request confirmation email sent to ${requester.email}`);
+  } catch (error) {
+    console.error(`Failed to send confirmation email:`, error);
+    throw error;
   }
 }
 

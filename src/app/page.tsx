@@ -65,6 +65,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'images' | 'requests'>('images');
   const [showMenu, setShowMenu] = useState(false);
   const [previewImage, setPreviewImage] = useState<Image | null>(null);
+  // 申請完了モーダル
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  // 申請キャンセル
+  const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   // プレビュー用のナビゲーション関数
   const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
@@ -208,8 +213,7 @@ export default function Home() {
         setConsentStartTime(null);
         setRemainingSeconds(10);
         fetchData();
-        setActiveTab('requests');
-        alert('申請を送信しました。承認をお待ちください。');
+        setShowCompletionModal(true);
       } else {
         alert(data.error || '申請に失敗しました');
       }
@@ -261,6 +265,30 @@ export default function Home() {
     const isAtBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 10;
     if (isAtBottom && !hasScrolledToBottom) {
       setHasScrolledToBottom(true);
+    }
+  }
+
+  // 申請キャンセル処理
+  async function handleCancelRequest() {
+    if (!cancellingRequestId) return;
+    setCancelling(true);
+
+    try {
+      const res = await fetch(`/api/requests/${cancellingRequestId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+        setCancellingRequestId(null);
+      } else {
+        alert(data.error || 'キャンセルに失敗しました');
+      }
+    } catch (error) {
+      console.error('Failed to cancel request:', error);
+      alert('キャンセルに失敗しました');
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -583,6 +611,14 @@ export default function Home() {
                           ダウンロード
                         </button>
                       )}
+                      {request.status === 'pending' && (
+                        <button
+                          onClick={() => setCancellingRequestId(request.id)}
+                          className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200"
+                        >
+                          キャンセル
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -651,6 +687,14 @@ export default function Home() {
                                 ダウンロード
                               </button>
                             )}
+                            {request.status === 'pending' && (
+                              <button
+                                onClick={() => setCancellingRequestId(request.id)}
+                                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                              >
+                                キャンセル
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -674,24 +718,27 @@ export default function Home() {
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               {selectedImage.permission_level === 'view' ? '画像の利用申請' : '画像のダウンロード'}
             </h2>
-            <div className="mb-4">
-              {isVideo(selectedImage) ? (
-                <video
-                  src={getImageUrl(selectedImage.storage_path)}
-                  controls
-                  className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
-                />
-              ) : (
-                <img
-                  src={getImageUrl(selectedImage.storage_path)}
-                  alt={selectedImage.original_filename}
-                  className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
-                />
-              )}
-              <p className="text-sm text-gray-500 mt-2 truncate">
-                {selectedImage.original_filename}
-              </p>
-            </div>
+            {/* Step2（同意書画面）では画像を非表示にしてスペース確保 */}
+            {!(selectedImage.permission_level === 'view' && requestStep === 2) && (
+              <div className="mb-4">
+                {isVideo(selectedImage) ? (
+                  <video
+                    src={getImageUrl(selectedImage.storage_path)}
+                    controls
+                    className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
+                  />
+                ) : (
+                  <img
+                    src={getImageUrl(selectedImage.storage_path)}
+                    alt={selectedImage.original_filename}
+                    className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
+                  />
+                )}
+                <p className="text-sm text-gray-500 mt-2 truncate">
+                  {selectedImage.original_filename}
+                </p>
+              </div>
+            )}
 
             {/* ダウンロード可/編集可の場合は直接ダウンロード */}
             {(selectedImage.permission_level === 'download' || selectedImage.permission_level === 'edit') && (
@@ -1051,6 +1098,65 @@ export default function Home() {
           className="fixed inset-0 z-40 sm:hidden"
           onClick={() => setShowMenu(false)}
         />
+      )}
+
+      {/* 申請完了モーダル */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">申請完了</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              申請を送信しました。<br />
+              承認をお待ちください。
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              承認されると通知メールが届きます。
+            </p>
+            <button
+              onClick={() => {
+                setShowCompletionModal(false);
+                setActiveTab('requests');
+              }}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              申請履歴を確認する
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 申請キャンセル確認モーダル */}
+      {cancellingRequestId && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">申請をキャンセル</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              この申請をキャンセルしますか？<br />
+              この操作は取り消せません。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancellingRequestId(null)}
+                disabled={cancelling}
+                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50"
+              >
+                戻る
+              </button>
+              <button
+                onClick={handleCancelRequest}
+                disabled={cancelling}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm disabled:opacity-50"
+              >
+                {cancelling ? 'キャンセル中...' : 'キャンセルする'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
