@@ -60,6 +60,9 @@ export default function ImagesPage() {
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
   const [previewImage, setPreviewImage] = useState<Image | null>(null);
+  const [showUploadMenu, setShowUploadMenu] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -255,6 +258,8 @@ export default function ImagesPage() {
     const imageCount = selectedImageIds.size;
     if (folderCount === 0 && imageCount === 0) return;
 
+    setMoving(true);
+    setShowMoveModal(false);
     try {
       // 並列実行で高速化
       await Promise.all([
@@ -276,11 +281,12 @@ export default function ImagesPage() {
         ),
       ]);
       clearSelection();
-      setShowMoveModal(false);
       fetchData();
     } catch (error) {
       console.error('Bulk move failed:', error);
       alert('一括移動に失敗しました');
+    } finally {
+      setMoving(false);
     }
   }
 
@@ -444,6 +450,8 @@ export default function ImagesPage() {
   async function uploadFiles(files: File[]) {
     setUploading(true);
     setUploadProgress({ current: 0, total: files.length });
+    setUploadErrors([]);
+    const errors: string[] = [];
 
     try {
       for (let i = 0; i < files.length; i++) {
@@ -456,20 +464,31 @@ export default function ImagesPage() {
           formData.append('folder_id', currentFolderId);
         }
 
-        const res = await fetch('/api/admin/images', {
-          method: 'POST',
-          body: formData,
-        });
+        try {
+          const res = await fetch('/api/admin/images', {
+            method: 'POST',
+            body: formData,
+          });
 
-        const data = await res.json();
-        if (!data.success) {
-          console.error(`${file.name}: ${data.error}`);
+          const data = await res.json();
+          if (!data.success) {
+            const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
+            console.error(errorMsg);
+            errors.push(errorMsg);
+          }
+        } catch (fetchError) {
+          const errorMsg = `${file.name}: ネットワークエラー`;
+          console.error(errorMsg, fetchError);
+          errors.push(errorMsg);
         }
       }
       fetchData();
+      if (errors.length > 0) {
+        setUploadErrors(errors);
+      }
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('アップロードに失敗しました');
+      setUploadErrors([`アップロード処理中にエラーが発生しました: ${error}`]);
     } finally {
       setUploading(false);
       setUploadProgress({ current: 0, total: 0 });
@@ -486,6 +505,8 @@ export default function ImagesPage() {
     }
 
     setUploading(true);
+    setUploadErrors([]);
+    const errors: string[] = [];
     const totalFiles = folderFiles.length;
     let uploadedCount = 0;
     setUploadProgress({ current: 0, total: totalFiles });
@@ -509,6 +530,7 @@ export default function ImagesPage() {
           }
         } catch (error) {
           console.error('Failed to create folder:', error);
+          errors.push(`フォルダ「${name}」の作成に失敗`);
         }
 
         for (const file of files) {
@@ -521,21 +543,32 @@ export default function ImagesPage() {
             formData.append('folder_id', targetFolderId);
           }
 
-          const res = await fetch('/api/admin/images', {
-            method: 'POST',
-            body: formData,
-          });
+          try {
+            const res = await fetch('/api/admin/images', {
+              method: 'POST',
+              body: formData,
+            });
 
-          const data = await res.json();
-          if (!data.success) {
-            console.error(`${file.name}: ${data.error}`);
+            const data = await res.json();
+            if (!data.success) {
+              const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
+              console.error(errorMsg);
+              errors.push(errorMsg);
+            }
+          } catch (fetchError) {
+            const errorMsg = `${file.name}: ネットワークエラー`;
+            console.error(errorMsg, fetchError);
+            errors.push(errorMsg);
           }
         }
       }
       fetchData();
+      if (errors.length > 0) {
+        setUploadErrors(errors);
+      }
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('アップロードに失敗しました');
+      setUploadErrors([`アップロード処理中にエラーが発生しました: ${error}`]);
     } finally {
       setUploading(false);
       setUploadProgress({ current: 0, total: 0 });
@@ -738,6 +771,7 @@ export default function ImagesPage() {
 
     if (!draggingImageId && !draggingFolderId) return;
 
+    setMoving(true);
     try {
       // 並列実行で高速化
       await Promise.all([
@@ -764,6 +798,8 @@ export default function ImagesPage() {
     } catch (error) {
       console.error('Failed to move items:', error);
       alert('移動に失敗しました');
+    } finally {
+      setMoving(false);
     }
 
     setDraggingImageId(null);
@@ -928,31 +964,67 @@ export default function ImagesPage() {
           >
             📁 新規フォルダ
           </button>
-          <label className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-sm">
-            {uploading ? `${uploadProgress.current}/${uploadProgress.total}` : '📷 ファイル追加'}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
-              multiple
-              onChange={handleFileUpload}
+          {/* アップロードボタン（統合ドロップダウン） */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUploadMenu(!showUploadMenu)}
               disabled={uploading}
-              className="hidden"
-            />
-          </label>
-          <label className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer text-sm">
-            📂 フォルダごと
-            <input
-              ref={folderInputRef}
-              type="file"
-              accept="image/*,video/*"
-              /* @ts-expect-error webkitdirectory is not in types */
-              webkitdirectory="true"
-              onChange={handleFolderUpload}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center gap-1"
+            >
+              {uploading ? `📤 ${uploadProgress.current}/${uploadProgress.total}` : '📤 アップロード'}
+              <svg className={`w-4 h-4 transition-transform ${showUploadMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showUploadMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[160px]">
+                <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700">
+                  📷 ファイルを選択
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
+                    multiple
+                    onChange={(e) => { handleFileUpload(e); setShowUploadMenu(false); }}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+                <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700 border-t border-gray-100">
+                  📂 フォルダごと
+                  <input
+                    ref={folderInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    /* @ts-expect-error webkitdirectory is not in types */
+                    webkitdirectory="true"
+                    onChange={(e) => { handleFolderUpload(e); setShowUploadMenu(false); }}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
+            multiple
+            onChange={handleFileUpload}
+            disabled={uploading}
+            className="hidden"
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            accept="image/*,video/*"
+            /* @ts-expect-error webkitdirectory is not in types */
+            webkitdirectory="true"
+            onChange={handleFolderUpload}
+            disabled={uploading}
+            className="hidden"
+          />
           <button
             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
             className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
@@ -995,6 +1067,31 @@ export default function ImagesPage() {
           </span>
         ))}
       </div>
+
+      {/* アップロードエラー表示 */}
+      {uploadErrors.length > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-red-700">
+              アップロードエラー ({uploadErrors.length}件)
+            </span>
+            <button
+              onClick={() => setUploadErrors([])}
+              className="text-xs text-red-600 hover:text-red-800"
+            >
+              閉じる
+            </button>
+          </div>
+          <div className="max-h-32 overflow-y-auto text-xs text-red-600 space-y-1">
+            {uploadErrors.map((err, i) => (
+              <div key={i} className="flex items-start gap-1">
+                <span className="text-red-400">•</span>
+                <span>{err}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {currentFolderId && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg flex flex-wrap items-center justify-between gap-2">
@@ -1064,17 +1161,31 @@ export default function ImagesPage() {
       )}
 
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="relative">
+          {/* 移動中オーバーレイ */}
+          {moving && (
+            <div className="absolute inset-0 bg-white/50 z-20 flex items-center justify-center rounded-lg">
+              <div className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="text-sm font-medium">移動中...</span>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {folders.map((folder) => (
             <div
               key={`folder-${folder.id}`}
               draggable
               onDragStart={(e) => handleFolderItemDragStart(e, folder.id)}
               onDragEnd={handleDragEnd}
-              className={`relative bg-white rounded-lg shadow hover:shadow-md cursor-pointer group ${
-                dropTargetFolderId === folder.id && !selectedFolderIds.has(folder.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-              } ${draggingFolderId && selectedFolderIds.has(folder.id) ? 'opacity-50 ring-2 ring-blue-500' : ''}
-              ${selectedFolderIds.has(folder.id) && !draggingFolderId ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
+              className={`relative bg-white rounded-lg shadow hover:shadow-md cursor-pointer group transition-all duration-200 ease-out ${
+                dropTargetFolderId === folder.id && !selectedFolderIds.has(folder.id) ? 'ring-2 ring-blue-500 bg-blue-50 scale-105' : ''
+              } ${draggingFolderId && selectedFolderIds.has(folder.id) ? 'opacity-50 ring-2 ring-blue-500 scale-95' : ''}
+              ${selectedFolderIds.has(folder.id) && !draggingFolderId ? 'ring-2 ring-blue-400 bg-blue-50' : ''}
+              hover:scale-[1.02] active:scale-95`}
               onDragOver={(e) => handleFolderDragOver(e, folder.id)}
               onDragLeave={handleFolderDragLeave}
               onDrop={(e) => handleFolderDrop(e, folder.id)}
@@ -1124,9 +1235,10 @@ export default function ImagesPage() {
               draggable
               onDragStart={(e) => handleImageDragStart(e, image.id)}
               onDragEnd={handleDragEnd}
-              className={`relative bg-white rounded-lg shadow hover:shadow-md group cursor-grab active:cursor-grabbing ${
-                (draggingImageId || draggingFolderId) && selectedImageIds.has(image.id) ? 'opacity-50 ring-2 ring-blue-500' : ''
-              } ${selectedImageIds.has(image.id) && !draggingImageId && !draggingFolderId ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
+              className={`relative bg-white rounded-lg shadow hover:shadow-md group cursor-grab active:cursor-grabbing transition-all duration-200 ease-out ${
+                (draggingImageId || draggingFolderId) && selectedImageIds.has(image.id) ? 'opacity-50 ring-2 ring-blue-500 scale-95' : ''
+              } ${selectedImageIds.has(image.id) && !draggingImageId && !draggingFolderId ? 'ring-2 ring-blue-400 bg-blue-50' : ''}
+              hover:scale-[1.02] active:scale-95`}
             >
               <div
                 onClick={(e) => toggleImageSelection(image.id, e)}
@@ -1205,6 +1317,7 @@ export default function ImagesPage() {
               <p>フォルダまたは画像をドラッグ＆ドロップしてアップロード</p>
             </div>
           )}
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">

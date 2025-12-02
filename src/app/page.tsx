@@ -581,7 +581,7 @@ export default function Home() {
                   <div
                     key={`folder-${folder.id}`}
                     onClick={() => setCurrentFolderId(folder.id)}
-                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg cursor-pointer group transition-all duration-200 ease-out hover:scale-[1.02] active:scale-95"
                   >
                     <div className="aspect-square bg-gray-50 flex items-center justify-center">
                       <span className="text-6xl">📁</span>
@@ -616,7 +616,7 @@ export default function Home() {
                 {images.map((image) => (
                   <div
                     key={image.id}
-                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow group"
+                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg group transition-all duration-200 ease-out hover:scale-[1.02] active:scale-95"
                   >
                     <div
                       className="aspect-square bg-gray-100 relative cursor-pointer"
