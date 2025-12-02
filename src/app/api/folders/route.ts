@@ -4,11 +4,13 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 // 権限レベル: view < download < edit
 type PermissionLevel = 'view' | 'download' | 'edit';
+type DefaultPermission = 'none' | 'view' | 'download' | 'edit';
 
 interface Folder {
   id: string;
   name: string;
   parent_id: string | null;
+  default_permission?: DefaultPermission;
 }
 
 interface FolderWithLevel extends Folder {
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
       folderPermData = folderPermDataWithLevel;
     }
 
-    // フォルダIDと権限レベルのマップ
+    // フォルダIDと権限レベルのマップ（明示的な権限）
     const folderPermMap = new Map<string, PermissionLevel>();
     (folderPermData || []).forEach((fp) => {
       folderPermMap.set(fp.folder_id, fp.level || 'view');
@@ -66,13 +68,30 @@ export async function GET(request: NextRequest) {
 
     const permittedFolderIds = Array.from(folderPermMap.keys());
 
-    // 2. 全フォルダを取得（階層構造の解析用）
-    const { data: allFolders, error: allFoldersError } = await supabase
+    // 2. 全フォルダを取得（default_permission含む）
+    const { data: allFoldersRaw, error: allFoldersError } = await supabase
       .from('folders')
-      .select('id, name, parent_id')
+      .select('id, name, parent_id, default_permission')
       .order('name');
 
     if (allFoldersError) throw allFoldersError;
+
+    // default_permissionがない場合は'none'をデフォルトに
+    const allFolders: Folder[] = (allFoldersRaw || []).map((f: Record<string, unknown>) => ({
+      id: f.id as string,
+      name: f.name as string,
+      parent_id: f.parent_id as string | null,
+      default_permission: (f.default_permission as DefaultPermission) || 'none',
+    }));
+
+    // 3. デフォルト権限がnone以外のフォルダも権限マップに追加
+    allFolders.forEach((f) => {
+      if (f.default_permission && f.default_permission !== 'none' && !folderPermMap.has(f.id)) {
+        // デフォルト権限を使用（明示的な権限がない場合）
+        folderPermMap.set(f.id, f.default_permission as PermissionLevel);
+        permittedFolderIds.push(f.id);
+      }
+    });
 
     // 3. 権限を持つフォルダの子孫フォルダも含めて、アクセス可能なフォルダを特定
     const accessibleFolderIds = new Set<string>();

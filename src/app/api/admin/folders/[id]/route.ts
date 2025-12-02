@@ -18,7 +18,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, parent_id } = body;
+    const { name, parent_id, default_permission } = body;
 
     // 自分自身を親にはできない
     if (parent_id === id) {
@@ -28,12 +28,22 @@ export async function PUT(
       );
     }
 
+    // デフォルト権限の値を検証
+    const validPermissions = ['none', 'view', 'download', 'edit'];
+    if (default_permission !== undefined && !validPermissions.includes(default_permission)) {
+      return NextResponse.json(
+        { success: false, error: '無効なデフォルト権限です' },
+        { status: 400 }
+      );
+    }
+
     const supabase = createServiceClient();
 
     // 更新するフィールドを動的に構築
-    const updateData: { name?: string; parent_id?: string | null } = {};
+    const updateData: { name?: string; parent_id?: string | null; default_permission?: string } = {};
     if (name !== undefined) updateData.name = name;
     if (parent_id !== undefined) updateData.parent_id = parent_id || null;
+    if (default_permission !== undefined) updateData.default_permission = default_permission;
 
     const { data, error } = await supabase
       .from('folders')

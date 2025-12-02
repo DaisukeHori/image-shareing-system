@@ -3,15 +3,6 @@ import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
 
-// Next.js App Router: ボディパーサーのサイズ制限を増加
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
-    },
-  },
-};
-
 // 動的レンダリングを強制（キャッシュ無効化）
 export const dynamic = 'force-dynamic';
 

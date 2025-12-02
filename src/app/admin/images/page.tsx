@@ -4,10 +4,13 @@ import { useEffect, useState, useRef } from 'react';
 import HelpTip from '@/components/HelpTip';
 import ConfirmModal from '@/components/ConfirmModal';
 
+type DefaultPermission = 'none' | 'view' | 'download' | 'edit';
+
 interface Folder {
   id: string;
   name: string;
   parent_id: string | null;
+  default_permission?: DefaultPermission;
 }
 
 interface User {
@@ -50,6 +53,7 @@ export default function ImagesPage() {
   const [showFolderPermissionModal, setShowFolderPermissionModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [userPermissions, setUserPermissions] = useState<Record<string, 'view' | 'download' | 'edit'>>({});
+  const [folderDefaultPermission, setFolderDefaultPermission] = useState<DefaultPermission>('none');
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -966,6 +970,7 @@ export default function ImagesPage() {
   function openFolderPermissionModal(folder: Folder) {
     setEditingFolder(folder);
     setUserPermissions({});
+    setFolderDefaultPermission(folder.default_permission || 'none');
     setShowFolderPermissionModal(true);
     fetch(`/api/admin/folders/${folder.id}/permissions`)
       .then(res => res.json())
@@ -1029,6 +1034,20 @@ export default function ImagesPage() {
     setSaving(true);
 
     try {
+      // デフォルト権限を保存
+      const folderRes = await fetch(`/api/admin/folders/${editingFolder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ default_permission: folderDefaultPermission }),
+      });
+
+      const folderData = await folderRes.json();
+      if (!folderData.success) {
+        alert(folderData.error || 'デフォルト権限の保存に失敗しました');
+        return;
+      }
+
+      // 個別ユーザー権限を保存
       const permissions = Object.entries(userPermissions).map(([user_id, level]) => ({
         user_id,
         level,
@@ -1044,6 +1063,8 @@ export default function ImagesPage() {
       if (data.success) {
         setShowFolderPermissionModal(false);
         setEditingFolder(null);
+        // フォルダリストを更新
+        fetchData();
       } else {
         alert(data.error || 'エラーが発生しました');
       }
@@ -1751,6 +1772,28 @@ export default function ImagesPage() {
               <div>・<span className="font-bold text-gray-900">ダウンロード可</span>: 直接ダウンロード可能</div>
               <div>・<span className="font-bold text-gray-900">編集・削除可</span>: 画像の編集・削除が可能</div>
             </div>
+
+            {/* デフォルト権限設定 */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <label className="block text-sm font-bold text-gray-900 mb-2">
+                デフォルト権限（個別設定がない場合）
+              </label>
+              <select
+                value={folderDefaultPermission}
+                onChange={(e) => setFolderDefaultPermission(e.target.value as DefaultPermission)}
+                className="w-full text-sm border-2 border-blue-300 rounded px-3 py-2 bg-white text-gray-900 font-semibold focus:border-blue-500 focus:outline-none"
+              >
+                <option value="none">なし（個別権限のみ）</option>
+                <option value="view">全員が閲覧可能</option>
+                <option value="download">全員がダウンロード可能</option>
+                <option value="edit">全員が編集・削除可能</option>
+              </select>
+              <p className="text-xs text-gray-600 mt-1">
+                ※ 個別ユーザー権限が設定されている場合、そちらが優先されます
+              </p>
+            </div>
+
+            <h3 className="text-sm font-bold text-gray-900 mb-2">ユーザー別権限</h3>
             <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-400 rounded-lg p-2 bg-white">
               {users.map((user) => (
                 <div
