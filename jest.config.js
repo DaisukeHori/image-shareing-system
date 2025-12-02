@@ -16,6 +16,9 @@ const customJestConfig = {
     '!src/**/*.d.ts',
     '!src/types/**/*',
   ],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uuid|date-fns)/)',
+  ],
 };
 
 module.exports = createJestConfig(customJestConfig);

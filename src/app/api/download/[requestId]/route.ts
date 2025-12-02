@@ -122,15 +122,15 @@ export async function GET(
       })
       .eq('id', requestId);
 
-    // ファイル名を生成
+    // ファイル名を生成（PNG形式で出力）
     const originalFilename = approvalRequest.image.original_filename;
-    const ext = originalFilename.split('.').pop() || 'jpg';
-    const downloadFilename = `${approvalRequest.request_number}_${originalFilename}`;
+    const baseName = originalFilename.replace(/\.[^/.]+$/, '');
+    const downloadFilename = `${approvalRequest.request_number}_${baseName}.png`;
 
-    // 画像を返す
+    // 画像を返す（不可視透かし保持のためPNG形式）
     return new NextResponse(new Uint8Array(watermarkedImage), {
       headers: {
-        'Content-Type': 'image/jpeg',
+        'Content-Type': 'image/png',
         'Content-Disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
         'Cache-Control': 'no-store',
       },

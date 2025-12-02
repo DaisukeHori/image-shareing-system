@@ -1,106 +1,143 @@
 import sharp from 'sharp';
 import { WatermarkInfo } from '@/types/database';
 
-// 電子透かしを画像に埋め込む
+// マジックバイト（透かしデータの開始を示す）
+const MAGIC_BYTES = [0x52, 0x56, 0x4c, 0x57]; // "RVLW" (Revol Watermark)
+const END_MARKER = [0x45, 0x4e, 0x44]; // "END"
+
+/**
+ * LSBステガノグラフィーによる不可視電子透かしの埋め込み
+ * 画像のRGBチャンネルの最下位ビットに情報を埋め込む
+ * 画像の見た目にはほとんど影響を与えない
+ */
 export async function addWatermark(
   imageBuffer: Buffer,
   info: WatermarkInfo
 ): Promise<Buffer> {
-  // 透かし情報をテキストに変換
-  const watermarkText = [
-    `DL: ${info.downloaderName}`,
-    `承認: ${info.approverName}`,
-    `日時: ${info.downloadDate}`,
-    `ID: ${info.requestId}`,
-  ].join(' | ');
+  // 透かし情報をJSONに変換
+  const watermarkData = JSON.stringify(info);
+  const dataBytes = Buffer.from(watermarkData, 'utf8');
 
-  // Base64エンコードした透かしデータ（メタデータとして埋め込み用）
-  const watermarkData = Buffer.from(JSON.stringify(info)).toString('base64');
+  // データ長を4バイトで格納（最大4GB）
+  const lengthBytes = Buffer.alloc(4);
+  lengthBytes.writeUInt32BE(dataBytes.length, 0);
 
-  // 画像のメタデータを取得
-  const metadata = await sharp(imageBuffer).metadata();
-  const width = metadata.width || 800;
-  const height = metadata.height || 600;
+  // 埋め込むデータ: マジックバイト + 長さ + データ + 終了マーカー
+  const embedData = Buffer.concat([
+    Buffer.from(MAGIC_BYTES),
+    lengthBytes,
+    dataBytes,
+    Buffer.from(END_MARKER),
+  ]);
 
-  // 可視的な透かしを作成（画像の下部に半透明のテキスト）
-  const svgText = `
-    <svg width="${width}" height="${height}">
-      <style>
-        .watermark {
-          font-family: Arial, sans-serif;
-          font-size: 14px;
-          fill: rgba(255, 255, 255, 0.7);
-          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-        }
-      </style>
-      <rect x="0" y="${height - 40}" width="${width}" height="40" fill="rgba(0, 0, 0, 0.4)"/>
-      <text x="10" y="${height - 15}" class="watermark">${watermarkText}</text>
-    </svg>
-  `;
+  // 画像をRGBAで読み込み
+  const image = sharp(imageBuffer);
+  const metadata = await image.metadata();
+  const { width = 0, height = 0 } = metadata;
 
-  // 透かしを画像に合成
-  const watermarkedImage = await sharp(imageBuffer)
-    .composite([
-      {
-        input: Buffer.from(svgText),
-        top: 0,
-        left: 0,
-      },
-    ])
-    .withMetadata({
-      exif: {
-        IFD0: {
-          Copyright: watermarkData,
-          Artist: info.downloaderName,
-          ImageDescription: `Request: ${info.requestId}`,
-        },
-      },
-    })
-    .jpeg({ quality: 90 })
+  // 生のピクセルデータを取得
+  const { data, info: rawInfo } = await image
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  // 必要なビット数を計算（各バイトを8ビットで表現）
+  const requiredBits = embedData.length * 8;
+  const availablePixels = width * height;
+  const availableBits = availablePixels * 3; // RGB各チャンネルの最下位ビット
+
+  if (requiredBits > availableBits) {
+    throw new Error('画像サイズが小さすぎて透かしを埋め込めません');
+  }
+
+  // ピクセルデータをコピー
+  const pixels = Buffer.from(data);
+
+  // LSBステガノグラフィーでデータを埋め込み
+  let bitIndex = 0;
+  for (let byteIndex = 0; byteIndex < embedData.length; byteIndex++) {
+    const byte = embedData[byteIndex];
+    for (let bit = 7; bit >= 0; bit--) {
+      const bitValue = (byte >> bit) & 1;
+      const pixelIndex = Math.floor(bitIndex / 3);
+      const channelOffset = bitIndex % 3; // 0=R, 1=G, 2=B (Aはスキップ)
+      const dataIndex = pixelIndex * 4 + channelOffset; // RGBA形式
+
+      // 最下位ビットを設定
+      pixels[dataIndex] = (pixels[dataIndex] & 0xfe) | bitValue;
+      bitIndex++;
+    }
+  }
+
+  // 透かし入り画像を生成（PNG形式で無損失保存）
+  const watermarkedImage = await sharp(pixels, {
+    raw: {
+      width: rawInfo.width,
+      height: rawInfo.height,
+      channels: 4,
+    },
+  })
+    .png({ compressionLevel: 6 }) // PNG形式で無損失保存（透かしを確実に保持）
     .toBuffer();
 
   return watermarkedImage;
 }
 
-// 電子透かしを読み取る（復号）
+/**
+ * LSBステガノグラフィーによる不可視電子透かしの読み取り
+ */
 export async function readWatermark(
   imageBuffer: Buffer
 ): Promise<WatermarkInfo | null> {
   try {
-    const metadata = await sharp(imageBuffer).metadata();
+    // 画像をRGBAで読み込み
+    const image = sharp(imageBuffer);
+    const { data } = await image
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
 
-    // EXIFデータから透かし情報を読み取り
-    if (metadata.exif) {
-      // EXIFからCopyrightフィールドを探す
-      // sharpのmetadataではexifがバイナリとして返されるため、
-      // より詳細な解析にはexif-parserなどが必要だが、
-      // ここでは簡易的な実装とする
+    // マジックバイトを探す
+    const magicBytes = extractBits(data, 0, MAGIC_BYTES.length * 8);
+    const isMagicValid = MAGIC_BYTES.every(
+      (byte, i) => magicBytes[i] === byte
+    );
 
-      // 簡易的にEXIFバイナリから透かしデータを探す
-      const exifString = metadata.exif.toString('utf8');
+    if (!isMagicValid) {
+      return null;
+    }
 
-      // Base64エンコードされたJSONを探す
-      const base64Pattern = /[A-Za-z0-9+/=]{50,}/g;
-      const matches = exifString.match(base64Pattern);
+    // データ長を読み取り（マジックバイトの後）
+    const lengthBytes = extractBits(data, MAGIC_BYTES.length * 8, 4 * 8);
+    const dataLength =
+      (lengthBytes[0] << 24) |
+      (lengthBytes[1] << 16) |
+      (lengthBytes[2] << 8) |
+      lengthBytes[3];
 
-      if (matches) {
-        for (const match of matches) {
-          try {
-            const decoded = Buffer.from(match, 'base64').toString('utf8');
-            const parsed = JSON.parse(decoded);
+    // データ長の妥当性チェック
+    if (dataLength <= 0 || dataLength > 10000) {
+      return null;
+    }
 
-            if (
-              parsed.downloaderName &&
-              parsed.approverName &&
-              parsed.requestId
-            ) {
-              return parsed as WatermarkInfo;
-            }
-          } catch {
-            // このマッチは透かしデータではない
-          }
-        }
-      }
+    // 透かしデータを読み取り
+    const startBit = (MAGIC_BYTES.length + 4) * 8;
+    const watermarkBytes = extractBits(data, startBit, dataLength * 8);
+
+    // バイト配列を文字列に変換
+    const watermarkStr = Buffer.from(watermarkBytes).toString('utf8');
+
+    // JSONをパース
+    const parsed = JSON.parse(watermarkStr);
+
+    // 必要なフィールドがあるか確認
+    if (
+      parsed.downloaderName &&
+      parsed.approverName &&
+      parsed.requestId &&
+      parsed.downloadDate
+    ) {
+      return parsed as WatermarkInfo;
     }
 
     return null;
@@ -110,39 +147,95 @@ export async function readWatermark(
   }
 }
 
-// 画像から可視的な透かし情報を抽出（OCRなしの簡易版）
-// 実運用ではOCRサービスを使用することを推奨
-export async function extractVisibleWatermark(
-  imageBuffer: Buffer
-): Promise<string | null> {
-  try {
-    // 画像の下部40ピクセルを切り出して分析
-    const metadata = await sharp(imageBuffer).metadata();
-    const height = metadata.height || 600;
+/**
+ * ピクセルデータからビットを抽出してバイト配列に変換
+ */
+function extractBits(
+  pixelData: Buffer,
+  startBit: number,
+  numBits: number
+): number[] {
+  const bytes: number[] = [];
+  let currentByte = 0;
+  let bitsRead = 0;
 
-    // 下部の透かし領域を切り出し
-    const bottomRegion = await sharp(imageBuffer)
-      .extract({
-        left: 0,
-        top: Math.max(0, height - 40),
-        width: metadata.width || 800,
-        height: Math.min(40, height),
-      })
-      .toBuffer();
+  for (let i = 0; i < numBits; i++) {
+    const bitIndex = startBit + i;
+    const pixelIndex = Math.floor(bitIndex / 3);
+    const channelOffset = bitIndex % 3;
+    const dataIndex = pixelIndex * 4 + channelOffset;
 
-    // 画像の平均輝度を計算して透かし領域の存在を確認
-    const { dominant } = await sharp(bottomRegion).stats();
-
-    // 透かし領域（半透明の黒背景）が存在するかを判定
-    const avgBrightness = (dominant.r + dominant.g + dominant.b) / 3;
-
-    if (avgBrightness < 100) {
-      return '透かし領域を検出しました（詳細な読み取りにはEXIFデータを使用してください）';
+    if (dataIndex >= pixelData.length) {
+      break;
     }
 
-    return null;
+    const bitValue = pixelData[dataIndex] & 1;
+    currentByte = (currentByte << 1) | bitValue;
+    bitsRead++;
+
+    if (bitsRead === 8) {
+      bytes.push(currentByte);
+      currentByte = 0;
+      bitsRead = 0;
+    }
+  }
+
+  return bytes;
+}
+
+/**
+ * 透かしの検証結果の詳細情報を取得
+ */
+export async function verifyWatermark(imageBuffer: Buffer): Promise<{
+  hasWatermark: boolean;
+  isValid: boolean;
+  info: WatermarkInfo | null;
+  details: string;
+}> {
+  try {
+    const info = await readWatermark(imageBuffer);
+
+    if (!info) {
+      return {
+        hasWatermark: false,
+        isValid: false,
+        info: null,
+        details: '電子透かしが見つかりませんでした',
+      };
+    }
+
+    // 全ての必須フィールドがあるか確認
+    const requiredFields = [
+      'downloaderName',
+      'approverName',
+      'requestId',
+      'downloadDate',
+    ];
+    const missingFields = requiredFields.filter(
+      (field) => !info[field as keyof WatermarkInfo]
+    );
+
+    if (missingFields.length > 0) {
+      return {
+        hasWatermark: true,
+        isValid: false,
+        info,
+        details: `不完全な透かしデータ: ${missingFields.join(', ')} が欠けています`,
+      };
+    }
+
+    return {
+      hasWatermark: true,
+      isValid: true,
+      info,
+      details: '有効な電子透かしを検出しました',
+    };
   } catch (error) {
-    console.error('Failed to extract visible watermark:', error);
-    return null;
+    return {
+      hasWatermark: false,
+      isValid: false,
+      info: null,
+      details: `検証エラー: ${error instanceof Error ? error.message : '不明なエラー'}`,
+    };
   }
 }
