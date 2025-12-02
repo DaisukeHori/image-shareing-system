@@ -22,7 +22,8 @@ export async function GET(
     const { id } = await params;
     const supabase = createServiceClient();
 
-    const { data, error } = await supabase
+    // まずlevelカラムありで試す
+    let { data, error } = await supabase
       .from('image_permissions')
       .select(`
         id,
@@ -36,7 +37,27 @@ export async function GET(
       `)
       .eq('image_id', id);
 
-    if (error) throw error;
+    // levelカラムがない場合はlevelなしで再試行
+    if (error && error.message?.includes('level')) {
+      const result = await supabase
+        .from('image_permissions')
+        .select(`
+          id,
+          user_id,
+          user:users (
+            id,
+            name,
+            email
+          )
+        `)
+        .eq('image_id', id);
+
+      if (result.error) throw result.error;
+      // levelがない場合はデフォルトでviewを設定
+      data = (result.data || []).map((item: Record<string, unknown>) => ({ ...item, level: 'view' }));
+    } else if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
@@ -93,17 +114,33 @@ export async function PUT(
 
     // 新しい権限を追加
     if (permissionList.length > 0) {
-      const records = permissionList.map((p) => ({
+      // まずlevelカラムありで試す
+      let records = permissionList.map((p) => ({
         image_id: id,
         user_id: p.user_id,
         level: p.level,
       }));
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('image_permissions')
         .insert(records);
 
-      if (error) throw error;
+      // levelカラムがない場合はlevelなしで再試行
+      if (error && error.message?.includes('level')) {
+        console.log('level column not found, retrying without level');
+        const recordsWithoutLevel = permissionList.map((p) => ({
+          image_id: id,
+          user_id: p.user_id,
+        }));
+
+        const result = await supabase
+          .from('image_permissions')
+          .insert(recordsWithoutLevel);
+
+        if (result.error) throw result.error;
+      } else if (error) {
+        throw error;
+      }
     }
 
     return NextResponse.json({ success: true });
