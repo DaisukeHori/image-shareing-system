@@ -3,6 +3,21 @@ import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
 
+// Next.js App Router: ボディパーサーのサイズ制限を増加
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb',
+    },
+  },
+};
+
+// 動的レンダリングを強制（キャッシュ無効化）
+export const dynamic = 'force-dynamic';
+
+// 最大実行時間を延長（秒単位、Vercel Proの場合は300まで可能）
+export const maxDuration = 120;
+
 // 画像一覧取得
 export async function GET(request: NextRequest) {
   try {
@@ -86,9 +101,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ファイルサイズチェック (画像: 10MB, 動画: 500MB)
-    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
-    const maxSizeLabel = isVideo ? '500MB' : '10MB';
+    // ファイルサイズチェック (画像: 50MB, 動画: 500MB)
+    const maxSize = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+    const maxSizeLabel = isVideo ? '500MB' : '50MB';
     if (file.size > maxSize) {
       return NextResponse.json(
         { success: false, error: `ファイルサイズは${maxSizeLabel}以下にしてください` },
