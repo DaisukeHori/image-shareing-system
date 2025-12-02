@@ -106,17 +106,23 @@ export default function ImagesPage() {
   }
 
   function handleDragOver(e: React.DragEvent) {
+    // 内部ドラッグ（画像移動）の場合はスキップ
+    if (draggingImageId) return;
     e.preventDefault();
     e.stopPropagation();
   }
 
   function handleDragEnter(e: React.DragEvent) {
+    // 内部ドラッグ（画像移動）の場合はスキップ
+    if (draggingImageId) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
   }
 
   function handleDragLeave(e: React.DragEvent) {
+    // 内部ドラッグ（画像移動）の場合はスキップ
+    if (draggingImageId) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -124,6 +130,9 @@ export default function ImagesPage() {
   }
 
   async function handleDrop(e: React.DragEvent) {
+    // 内部ドラッグ（画像移動）の場合はスキップ
+    if (draggingImageId) return;
+
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
