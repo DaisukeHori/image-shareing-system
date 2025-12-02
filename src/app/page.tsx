@@ -55,8 +55,13 @@ export default function Home() {
   const [usageEndDate, setUsageEndDate] = useState('');
   const [requesterComment, setRequesterComment] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showConsentForm, setShowConsentForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // 2段階申請フロー用の状態
+  const [requestStep, setRequestStep] = useState<1 | 2>(1);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const [hasWaitedEnough, setHasWaitedEnough] = useState(false);
+  const [consentStartTime, setConsentStartTime] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(10);
   const [activeTab, setActiveTab] = useState<'images' | 'requests'>('images');
   const [showMenu, setShowMenu] = useState(false);
   const [previewImage, setPreviewImage] = useState<Image | null>(null);
@@ -132,6 +137,22 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // 同意書表示時の10秒タイマー
+  useEffect(() => {
+    if (requestStep === 2 && consentStartTime) {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - consentStartTime) / 1000);
+        const remaining = Math.max(0, 10 - elapsed);
+        setRemainingSeconds(remaining);
+        if (remaining === 0) {
+          setHasWaitedEnough(true);
+          clearInterval(interval);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [requestStep, consentStartTime]);
+
   async function fetchData() {
     try {
       const [imagesRes, requestsRes] = await Promise.all([
@@ -181,7 +202,11 @@ export default function Home() {
         setUsageEndDate('');
         setRequesterComment('');
         setAgreedToTerms(false);
-        setShowConsentForm(false);
+        setRequestStep(1);
+        setHasScrolledToBottom(false);
+        setHasWaitedEnough(false);
+        setConsentStartTime(null);
+        setRemainingSeconds(10);
         fetchData();
         setActiveTab('requests');
         alert('申請を送信しました。承認をお待ちください。');
@@ -204,7 +229,39 @@ export default function Home() {
     setUsageEndDate('');
     setRequesterComment('');
     setAgreedToTerms(false);
-    setShowConsentForm(false);
+    setRequestStep(1);
+    setHasScrolledToBottom(false);
+    setHasWaitedEnough(false);
+    setConsentStartTime(null);
+    setRemainingSeconds(10);
+  }
+
+  // Step2へ進む
+  function goToConsentStep() {
+    setRequestStep(2);
+    setConsentStartTime(Date.now());
+    setHasScrolledToBottom(false);
+    setHasWaitedEnough(false);
+    setRemainingSeconds(10);
+  }
+
+  // Step1に戻る
+  function goBackToStep1() {
+    setRequestStep(1);
+    setAgreedToTerms(false);
+    setHasScrolledToBottom(false);
+    setHasWaitedEnough(false);
+    setConsentStartTime(null);
+    setRemainingSeconds(10);
+  }
+
+  // 同意書のスクロール検知
+  function handleConsentScroll(e: React.UIEvent<HTMLDivElement>) {
+    const target = e.currentTarget;
+    const isAtBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 10;
+    if (isAtBottom && !hasScrolledToBottom) {
+      setHasScrolledToBottom(true);
+    }
   }
 
   // 最大利用期限日（1年後）を計算
@@ -663,188 +720,241 @@ export default function Home() {
               </>
             )}
 
-            {/* 閲覧のみの場合は申請フォーム */}
+            {/* 閲覧のみの場合は申請フォーム（2段階） */}
             {selectedImage.permission_level === 'view' && (
-              <form onSubmit={handleSubmitRequest}>
-                {/* 利用目的選択 */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    利用目的 *
-                  </label>
-                  <select
-                    value={purposeType}
-                    onChange={(e) => setPurposeType(e.target.value as PurposeType | '')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                    required
-                  >
-                    <option value="">選択してください</option>
-                    {Object.entries(purposeTypeLabels).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
+              <>
+                {/* ステップインジケーター */}
+                <div className="flex items-center justify-center mb-4">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${requestStep === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                    1
+                  </div>
+                  <div className={`w-12 h-1 mx-2 ${requestStep === 2 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${requestStep === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                    2
+                  </div>
                 </div>
 
-                {/* その他の場合の入力欄 */}
-                {purposeType === 'other' && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      その他の利用目的（詳細）*
-                    </label>
-                    <textarea
-                      value={purposeOther}
-                      onChange={(e) => setPurposeOther(e.target.value)}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                      placeholder="利用目的の詳細を入力してください"
-                      required
-                    />
+                {/* Step 1: 基本情報入力 */}
+                {requestStep === 1 && (
+                  <div>
+                    {/* 利用目的選択 */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        利用目的 *
+                      </label>
+                      <select
+                        value={purposeType}
+                        onChange={(e) => setPurposeType(e.target.value as PurposeType | '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+                      >
+                        <option value="">選択してください</option>
+                        {Object.entries(purposeTypeLabels).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* その他の場合の入力欄 */}
+                    {purposeType === 'other' && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          その他の利用目的（詳細）*
+                        </label>
+                        <textarea
+                          value={purposeOther}
+                          onChange={(e) => setPurposeOther(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+                          placeholder="利用目的の詳細を入力してください"
+                        />
+                      </div>
+                    )}
+
+                    {/* 掲載終了日 */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        掲載終了日 *
+                      </label>
+                      <input
+                        type="date"
+                        value={usageEndDate}
+                        onChange={(e) => setUsageEndDate(e.target.value)}
+                        min={getMinEndDate()}
+                        max={getMaxEndDate()}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        1年以内の日付を選択してください。期限後は削除確認が必要です。
+                      </p>
+                    </div>
+
+                    {/* 承認者へのコメント */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        承認者へのコメント（任意）
+                      </label>
+                      <textarea
+                        value={requesterComment}
+                        onChange={(e) => setRequesterComment(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+                        placeholder="承認者へ伝えたいことがあれば入力してください"
+                        maxLength={500}
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={resetRequestForm}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goToConsentStep}
+                        disabled={!purposeType || !usageEndDate || (purposeType === 'other' && !purposeOther.trim())}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                      >
+                        次へ
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* 掲載終了日 */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    掲載終了日 *
-                  </label>
-                  <input
-                    type="date"
-                    value={usageEndDate}
-                    onChange={(e) => setUsageEndDate(e.target.value)}
-                    min={getMinEndDate()}
-                    max={getMaxEndDate()}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    1年以内の日付を選択してください。期限後は削除確認が必要です。
-                  </p>
-                </div>
-
-                {/* 承認者へのコメント */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    承認者へのコメント（任意）
-                  </label>
-                  <textarea
-                    value={requesterComment}
-                    onChange={(e) => setRequesterComment(e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                    placeholder="承認者へ伝えたいことがあれば入力してください"
-                    maxLength={500}
-                  />
-                </div>
-
-                {/* 同意書セクション */}
-                <div className="mb-4 border border-gray-300 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setShowConsentForm(!showConsentForm)}
-                    className="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 rounded-t-lg hover:bg-gray-100"
-                  >
-                    <span className="text-sm font-medium text-gray-700">
-                      レンタルフォト使用に関する同意書
-                    </span>
-                    <svg
-                      className={`w-5 h-5 text-gray-500 transform transition-transform ${showConsentForm ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {showConsentForm && (
-                    <div className="p-4 max-h-64 overflow-y-auto text-xs text-gray-700 bg-white rounded-b-lg border-t">
-                      <p className="mb-3">
-                        {session?.user?.name || '本人'}は、株式会社レボル（以下「会社」という）が定めるレンタルフォト・ムービーの使用ルールについて、下記の内容を十分に理解し、これを遵守することに同意します。
+                {/* Step 2: 同意書確認 */}
+                {requestStep === 2 && (
+                  <form onSubmit={handleSubmitRequest}>
+                    <div className="mb-4">
+                      <h3 className="text-sm font-bold text-gray-900 mb-2">
+                        レンタルフォト使用に関する同意書
+                      </h3>
+                      <p className="text-xs text-gray-600 mb-2">
+                        以下の同意書を最後までスクロールしてお読みください。
                       </p>
 
-                      <h4 className="font-bold mb-2">第1条（目的）</h4>
-                      <p className="mb-3">
-                        本同意書は、会社が提供する画像素材（以下「画像素材」という）の適切な取扱いを定め、著作権その他の権利侵害および関連する法的トラブルを未然に防ぐことを目的とします。
-                      </p>
+                      {/* 同意書内容（スクロール必須） */}
+                      <div
+                        onScroll={handleConsentScroll}
+                        className="h-64 overflow-y-auto border border-gray-300 rounded-lg p-4 bg-gray-50 text-xs text-gray-700"
+                      >
+                        <p className="mb-3">
+                          {session?.user?.name || '本人'}は、株式会社レボル（以下「会社」という）が定めるレンタルフォト・ムービーの使用ルールについて、下記の内容を十分に理解し、これを遵守することに同意します。
+                        </p>
 
-                      <h4 className="font-bold mb-2">第2条（禁止事項）</h4>
-                      <p className="mb-2">従業員は、会社が提供する画像素材について、以下の行為を禁止されます。</p>
-                      <ul className="list-disc list-inside mb-3 space-y-1">
-                        <li>自店舗の広告宣伝目的以外での使用</li>
-                        <li>個人SNSや自店舗以外のアカウントでの利用</li>
-                        <li>画像素材の編集・加工（例：トリミング、反転、サイズ変更、色調補正、合成 等）</li>
-                        <li>画像素材の模倣・類似品制作</li>
-                        <li>第三者への貸与、譲渡、販売、再配布</li>
-                        <li>その他、会社が不適切と判断し禁止を通達した行為</li>
-                      </ul>
+                        <h4 className="font-bold mb-2">第1条（目的）</h4>
+                        <p className="mb-3">
+                          本同意書は、会社が提供する画像素材（以下「画像素材」という）の適切な取扱いを定め、著作権その他の権利侵害および関連する法的トラブルを未然に防ぐことを目的とします。
+                        </p>
 
-                      <h4 className="font-bold mb-2">第3条（使用可能な媒体・用途）</h4>
-                      <p className="mb-2">画像素材の使用は、会社が許可した以下の用途および媒体に限ります。</p>
-                      <ul className="list-disc list-inside mb-3 space-y-1">
-                        <li>自店のホットペッパービューティー掲載ページ</li>
-                        <li>自店の公式ホームページおよびブログ</li>
-                        <li>自店の公式SNSアカウント</li>
-                        <li>自店で使用するチラシ、DM、POPなどの販促物</li>
-                        <li>その他、会社が別途許可した媒体</li>
-                      </ul>
+                        <h4 className="font-bold mb-2">第2条（禁止事項）</h4>
+                        <p className="mb-2">従業員は、会社が提供する画像素材について、以下の行為を禁止されます。</p>
+                        <ul className="list-disc list-inside mb-3 space-y-1">
+                          <li>自店舗の広告宣伝目的以外での使用</li>
+                          <li>個人SNSや自店舗以外のアカウントでの利用</li>
+                          <li>画像素材の編集・加工（例：トリミング、反転、サイズ変更、色調補正、合成 等）</li>
+                          <li>画像素材の模倣・類似品制作</li>
+                          <li>第三者への貸与、譲渡、販売、再配布</li>
+                          <li>その他、会社が不適切と判断し禁止を通達した行為</li>
+                        </ul>
 
-                      <h4 className="font-bold mb-2">第4条（責任）</h4>
-                      <p className="mb-3">
-                        従業員が本同意書の内容に違反し、会社に損害が発生した場合、会社は従業員に対して相応の責任を求める場合があります。
-                      </p>
+                        <h4 className="font-bold mb-2">第3条（使用可能な媒体・用途）</h4>
+                        <p className="mb-2">画像素材の使用は、会社が許可した以下の用途および媒体に限ります。</p>
+                        <ul className="list-disc list-inside mb-3 space-y-1">
+                          <li>自店のホットペッパービューティー掲載ページ</li>
+                          <li>自店の公式ホームページおよびブログ</li>
+                          <li>自店の公式SNSアカウント</li>
+                          <li>自店で使用するチラシ、DM、POPなどの販促物</li>
+                          <li>その他、会社が別途許可した媒体</li>
+                        </ul>
 
-                      <h4 className="font-bold mb-2">第5条（管理・確認）</h4>
-                      <ul className="list-disc list-inside mb-3 space-y-1">
-                        <li>画像素材は、会社が指定する方法・場所で保管すること。</li>
-                        <li>必要に応じて、上長または会社担当者の確認を受けること。</li>
-                      </ul>
+                        <h4 className="font-bold mb-2">第4条（責任）</h4>
+                        <p className="mb-3">
+                          従業員が本同意書の内容に違反し、会社に損害が発生した場合、会社は従業員に対して相応の責任を求める場合があります。
+                        </p>
 
-                      <h4 className="font-bold mb-2">第6条（レンタル期間の終了および削除義務）</h4>
-                      <ul className="list-disc list-inside mb-3 space-y-1">
-                        <li>画像素材のレンタル期間が終了した場合、従業員は、当該画像素材の利用を直ちに中止しなければなりません。</li>
-                        <li>前項の場合、従業員は、保有している当該画像素材のデータ（パソコン、スマートフォン、クラウドストレージ、SNSの下書き等を含む）を遅滞なく削除するものとします。</li>
-                        <li>削除忘れによる無断利用が発生しないよう、従業員は十分に注意し、自己の管理責任のもと確実に削除を行うものとします。</li>
-                      </ul>
+                        <h4 className="font-bold mb-2">第5条（管理・確認）</h4>
+                        <ul className="list-disc list-inside mb-3 space-y-1">
+                          <li>画像素材は、会社が指定する方法・場所で保管すること。</li>
+                          <li>必要に応じて、上長または会社担当者の確認を受けること。</li>
+                        </ul>
+
+                        <h4 className="font-bold mb-2">第6条（レンタル期間の終了および削除義務）</h4>
+                        <ul className="list-disc list-inside mb-3 space-y-1">
+                          <li>画像素材のレンタル期間が終了した場合、従業員は、当該画像素材の利用を直ちに中止しなければなりません。</li>
+                          <li>前項の場合、従業員は、保有している当該画像素材のデータ（パソコン、スマートフォン、クラウドストレージ、SNSの下書き等を含む）を遅滞なく削除するものとします。</li>
+                          <li>削除忘れによる無断利用が発生しないよう、従業員は十分に注意し、自己の管理責任のもと確実に削除を行うものとします。</li>
+                        </ul>
+
+                        {/* スクロール完了の目印 */}
+                        <div className="mt-4 pt-4 border-t border-gray-300 text-center text-gray-500">
+                          ― 同意書はここまでです ―
+                        </div>
+                      </div>
+
+                      {/* ステータス表示 */}
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${hasScrolledToBottom ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            {hasScrolledToBottom ? '✓' : ''}
+                          </span>
+                          <span className={hasScrolledToBottom ? 'text-green-600' : 'text-gray-500'}>
+                            {hasScrolledToBottom ? '最後までスクロールしました' : '最後までスクロールしてください'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${hasWaitedEnough ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            {hasWaitedEnough ? '✓' : remainingSeconds}
+                          </span>
+                          <span className={hasWaitedEnough ? 'text-green-600' : 'text-gray-500'}>
+                            {hasWaitedEnough ? '確認時間が経過しました' : `あと${remainingSeconds}秒お待ちください`}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* 同意チェックボックス */}
-                <div className="mb-4">
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={agreedToTerms}
-                      onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">
-                      上記の同意書の内容を確認し、遵守することに同意します。
-                    </span>
-                  </label>
-                </div>
+                    {/* 同意チェックボックス */}
+                    <div className="mb-4">
+                      <label className={`flex items-start gap-2 ${hasScrolledToBottom && hasWaitedEnough ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                          disabled={!hasScrolledToBottom || !hasWaitedEnough}
+                          className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <span className="text-sm text-gray-700">
+                          上記の同意書の内容を確認し、遵守することに同意します。
+                        </span>
+                      </label>
+                    </div>
 
-                <p className="text-xs text-gray-500 mb-4">
-                  申請後、所属長または社長の承認が必要です。
-                  承認後7日以内に1回のみダウンロード可能です。
-                  ダウンロードした画像には電子透かしが入ります。
-                </p>
+                    <p className="text-xs text-gray-500 mb-4">
+                      申請後、所属長または社長の承認が必要です。
+                      承認後7日以内に1回のみダウンロード可能です。
+                      ダウンロードした画像には電子透かしが入ります。
+                    </p>
 
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={resetRequestForm}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting || !purposeType || !usageEndDate || !agreedToTerms || (purposeType === 'other' && !purposeOther.trim())}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-                  >
-                    {submitting ? '送信中...' : '申請する'}
-                  </button>
-                </div>
-              </form>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={goBackToStep1}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                      >
+                        戻る
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submitting || !agreedToTerms}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                      >
+                        {submitting ? '送信中...' : '申請する'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </>
             )}
           </div>
         </div>
