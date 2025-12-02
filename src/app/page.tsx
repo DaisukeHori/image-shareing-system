@@ -22,6 +22,9 @@ interface Image {
   file_type?: 'image' | 'video';
   mime_type?: string;
   created_at: string;
+  thumbnail_path?: string | null;
+  preview_path?: string | null;
+  processing_status?: 'none' | 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 type SortKey = 'filename' | 'created_at';
@@ -702,15 +705,25 @@ export default function Home() {
                         <>
                           {/* 動画プレースホルダー背景（iOS対策） */}
                           <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
-                          <video
-                            src={`${getImageUrl(image.storage_path)}#t=0.1`}
-                            className="w-full h-full object-cover relative z-[1] pointer-events-none"
-                            muted
-                            playsInline
-                            preload="metadata"
-                            draggable={false}
-                            onContextMenu={(e) => e.preventDefault()}
-                          />
+                          {image.thumbnail_path ? (
+                            <img
+                              src={getImageUrl(image.thumbnail_path)}
+                              alt={image.original_filename}
+                              className="w-full h-full object-cover relative z-[1] pointer-events-none"
+                              draggable={false}
+                              onContextMenu={(e) => e.preventDefault()}
+                            />
+                          ) : (
+                            <video
+                              src={`${getImageUrl(image.storage_path)}#t=0.1`}
+                              className="w-full h-full object-cover relative z-[1] pointer-events-none"
+                              muted
+                              playsInline
+                              preload="metadata"
+                              draggable={false}
+                              onContextMenu={(e) => e.preventDefault()}
+                            />
+                          )}
                           {/* 動画アイコン */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
                             <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
@@ -719,6 +732,12 @@ export default function Home() {
                               </svg>
                             </div>
                           </div>
+                          {/* 処理中表示 */}
+                          {image.processing_status === 'processing' && (
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-yellow-500 text-white text-xs rounded z-[3]">
+                              処理中...
+                            </div>
+                          )}
                         </>
                       ) : (
                         <img
@@ -1350,7 +1369,7 @@ export default function Home() {
           >
             {isVideo(previewImage) ? (
               <video
-                src={getImageUrl(previewImage.storage_path)}
+                src={getImageUrl(previewImage.preview_path || previewImage.storage_path)}
                 controls
                 autoPlay
                 playsInline

@@ -16,6 +16,9 @@ interface ImageData {
   file_type?: 'image' | 'video';
   mime_type?: string;
   created_at: string;
+  thumbnail_path?: string | null;
+  preview_path?: string | null;
+  processing_status?: 'none' | 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 interface ImageWithLevel extends ImageData {
@@ -56,6 +59,9 @@ export async function GET(request: NextRequest) {
           created_at,
           file_type,
           mime_type,
+          thumbnail_path,
+          preview_path,
+          processing_status,
           folder:folders (
             id,
             name
@@ -77,6 +83,9 @@ export async function GET(request: NextRequest) {
             created_at,
             file_type,
             mime_type,
+            thumbnail_path,
+            preview_path,
+            processing_status,
             folder:folders (
               id,
               name
@@ -155,6 +164,9 @@ export async function GET(request: NextRequest) {
           created_at,
           file_type,
           mime_type,
+          thumbnail_path,
+          preview_path,
+          processing_status,
           folder:folders (
             id,
             name

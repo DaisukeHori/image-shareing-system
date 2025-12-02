@@ -36,6 +36,9 @@ interface Image {
   created_at: string;
   file_type?: 'image' | 'video';
   mime_type?: string;
+  thumbnail_path?: string | null;
+  preview_path?: string | null;
+  processing_status?: 'none' | 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 type SortKey = 'filename' | 'created_at';
@@ -84,6 +87,8 @@ export default function ImagesPage() {
   // 並び替え
   const [sortKey, setSortKey] = useState<SortKey>('filename');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  // サムネイル再生成
+  const [regeneratingThumbnail, setRegeneratingThumbnail] = useState(false);
 
   // ソート済み画像（useMemoで最適化）
   const sortedImages = useMemo(() => {
@@ -1104,6 +1109,27 @@ export default function ImagesPage() {
     return image.file_type === 'video' || image.mime_type?.startsWith('video/');
   }
 
+  async function handleRegenerateThumbnail(imageId: string) {
+    setRegeneratingThumbnail(true);
+    try {
+      const res = await fetch(`/api/admin/images/${imageId}/regenerate-thumbnail`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('サムネイル生成を開始しました。しばらくしてからページを更新してください。');
+        fetchData();
+      } else {
+        alert(data.error || 'サムネイル再生成に失敗しました');
+      }
+    } catch (error) {
+      console.error('Failed to regenerate thumbnail:', error);
+      alert('サムネイル再生成に失敗しました');
+    } finally {
+      setRegeneratingThumbnail(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -1494,14 +1520,23 @@ export default function ImagesPage() {
                   <>
                     {/* 動画プレースホルダー背景（iOS対策） */}
                     <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
-                    <video
-                      src={`${getImageUrl(image.storage_path)}#t=0.1`}
-                      className="w-full h-full object-cover pointer-events-none relative z-[1]"
-                      muted
-                      playsInline
-                      preload="metadata"
-                      draggable={false}
-                    />
+                    {image.thumbnail_path ? (
+                      <img
+                        src={getImageUrl(image.thumbnail_path)}
+                        alt={image.original_filename}
+                        className="w-full h-full object-cover pointer-events-none relative z-[1]"
+                        draggable={false}
+                      />
+                    ) : (
+                      <video
+                        src={`${getImageUrl(image.storage_path)}#t=0.1`}
+                        className="w-full h-full object-cover pointer-events-none relative z-[1]"
+                        muted
+                        playsInline
+                        preload="metadata"
+                        draggable={false}
+                      />
+                    )}
                     {/* 動画アイコン */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
                       <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
@@ -1510,6 +1545,12 @@ export default function ImagesPage() {
                         </svg>
                       </div>
                     </div>
+                    {/* 処理中表示 */}
+                    {image.processing_status === 'processing' && (
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-yellow-500 text-white text-xs rounded z-[3]">
+                        処理中...
+                      </div>
+                    )}
                   </>
                 ) : (
                   <img
@@ -2048,7 +2089,7 @@ export default function ImagesPage() {
           >
             {isVideo(previewImage) ? (
               <video
-                src={getImageUrl(previewImage.storage_path)}
+                src={getImageUrl(previewImage.preview_path || previewImage.storage_path)}
                 controls
                 autoPlay
                 playsInline
@@ -2070,7 +2111,21 @@ export default function ImagesPage() {
                 {previewImage.original_filename}
                 <span className="text-gray-400 ml-2">({currentPreviewIndex + 1} / {sortedImages.length})</span>
               </p>
-              <div className="flex gap-2">
+              {/* 処理ステータス表示 */}
+              {isVideo(previewImage) && previewImage.processing_status && previewImage.processing_status !== 'none' && (
+                <span className={`px-2 py-1 text-xs rounded ${
+                  previewImage.processing_status === 'completed' ? 'bg-green-600 text-white' :
+                  previewImage.processing_status === 'processing' ? 'bg-yellow-500 text-white' :
+                  previewImage.processing_status === 'pending' ? 'bg-blue-500 text-white' :
+                  previewImage.processing_status === 'failed' ? 'bg-red-500 text-white' : ''
+                }`}>
+                  {previewImage.processing_status === 'completed' && '処理完了'}
+                  {previewImage.processing_status === 'processing' && '処理中...'}
+                  {previewImage.processing_status === 'pending' && '処理待ち'}
+                  {previewImage.processing_status === 'failed' && '処理失敗'}
+                </span>
+              )}
+              <div className="flex flex-wrap gap-2 justify-center">
                 <button
                   onClick={() => {
                     setPreviewImage(null);
@@ -2080,6 +2135,15 @@ export default function ImagesPage() {
                 >
                   権限設定
                 </button>
+                {isVideo(previewImage) && (
+                  <button
+                    onClick={() => handleRegenerateThumbnail(previewImage.id)}
+                    disabled={regeneratingThumbnail || previewImage.processing_status === 'processing' || previewImage.processing_status === 'pending'}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
+                  >
+                    {regeneratingThumbnail ? '処理中...' : 'サムネイル再生成'}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setPreviewImage(null);
