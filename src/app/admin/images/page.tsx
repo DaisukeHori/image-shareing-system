@@ -1375,25 +1375,25 @@ export default function ImagesPage() {
               画像の権限設定
             </h2>
             <p className="text-sm text-gray-500 mb-2">{selectedImage.original_filename}</p>
-            <div className="text-xs text-gray-400 mb-4 space-y-1">
-              <div>・<span className="font-medium">閲覧のみ</span>: 画像を見れるが申請が必要</div>
-              <div>・<span className="font-medium">ダウンロード可</span>: 直接ダウンロード可能</div>
-              <div>・<span className="font-medium">編集・削除可</span>: 画像の編集・削除が可能</div>
+            <div className="text-xs text-gray-700 mb-4 space-y-1 bg-gray-100 p-3 rounded-lg border border-gray-300">
+              <div>・<span className="font-bold text-gray-900">閲覧のみ</span>: 画像を見れるが申請が必要</div>
+              <div>・<span className="font-bold text-gray-900">ダウンロード可</span>: 直接ダウンロード可能</div>
+              <div>・<span className="font-bold text-gray-900">編集・削除可</span>: 画像の編集・削除が可能</div>
             </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+            <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-400 rounded-lg p-2 bg-white">
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 rounded"
+                  className="flex items-center justify-between gap-2 p-2 hover:bg-blue-50 rounded border border-gray-300 bg-gray-50"
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-900 block truncate">{user.name}</span>
-                    <span className="text-xs text-gray-500 block truncate">{user.email}</span>
+                    <span className="text-sm text-gray-900 font-semibold block truncate">{user.name}</span>
+                    <span className="text-xs text-gray-700 block truncate">{user.email}</span>
                   </div>
                   <select
                     value={userPermissions[user.id] || 'none'}
                     onChange={(e) => setUserPermissionLevel(user.id, e.target.value as 'view' | 'download' | 'edit' | 'none')}
-                    className="text-sm border rounded px-2 py-1 bg-white"
+                    className="text-sm border-2 border-gray-400 rounded px-2 py-1.5 bg-white text-gray-900 font-semibold focus:border-blue-500 focus:outline-none"
                   >
                     <option value="none">権限なし</option>
                     <option value="view">閲覧のみ</option>
@@ -1431,25 +1431,25 @@ export default function ImagesPage() {
             <p className="text-sm text-gray-500 mb-2">
               このフォルダ内のすべての画像にアクセス権限が付与されます。
             </p>
-            <div className="text-xs text-gray-400 mb-4 space-y-1">
-              <div>・<span className="font-medium">閲覧のみ</span>: 画像を見れるが申請が必要</div>
-              <div>・<span className="font-medium">ダウンロード可</span>: 直接ダウンロード可能</div>
-              <div>・<span className="font-medium">編集・削除可</span>: 画像の編集・削除が可能</div>
+            <div className="text-xs text-gray-700 mb-4 space-y-1 bg-gray-100 p-3 rounded-lg border border-gray-300">
+              <div>・<span className="font-bold text-gray-900">閲覧のみ</span>: 画像を見れるが申請が必要</div>
+              <div>・<span className="font-bold text-gray-900">ダウンロード可</span>: 直接ダウンロード可能</div>
+              <div>・<span className="font-bold text-gray-900">編集・削除可</span>: 画像の編集・削除が可能</div>
             </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+            <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-400 rounded-lg p-2 bg-white">
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 rounded"
+                  className="flex items-center justify-between gap-2 p-2 hover:bg-blue-50 rounded border border-gray-300 bg-gray-50"
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-900 block truncate">{user.name}</span>
-                    <span className="text-xs text-gray-500 block truncate">{user.email}</span>
+                    <span className="text-sm text-gray-900 font-semibold block truncate">{user.name}</span>
+                    <span className="text-xs text-gray-700 block truncate">{user.email}</span>
                   </div>
                   <select
                     value={userPermissions[user.id] || 'none'}
                     onChange={(e) => setUserPermissionLevel(user.id, e.target.value as 'view' | 'download' | 'edit' | 'none')}
-                    className="text-sm border rounded px-2 py-1 bg-white"
+                    className="text-sm border-2 border-gray-400 rounded px-2 py-1.5 bg-white text-gray-900 font-semibold focus:border-blue-500 focus:outline-none"
                   >
                     <option value="none">権限なし</option>
                     <option value="view">閲覧のみ</option>
@@ -1545,25 +1545,25 @@ export default function ImagesPage() {
               {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
               に権限を設定します
             </p>
-            <div className="text-xs text-gray-400 mb-4 space-y-1">
-              <div>・<span className="font-medium">閲覧のみ</span>: 画像を見れるが申請が必要</div>
-              <div>・<span className="font-medium">ダウンロード可</span>: 直接ダウンロード可能</div>
-              <div>・<span className="font-medium">編集・削除可</span>: 画像の編集・削除が可能</div>
+            <div className="text-xs text-gray-700 mb-4 space-y-1 bg-gray-100 p-3 rounded-lg border border-gray-300">
+              <div>・<span className="font-bold text-gray-900">閲覧のみ</span>: 画像を見れるが申請が必要</div>
+              <div>・<span className="font-bold text-gray-900">ダウンロード可</span>: 直接ダウンロード可能</div>
+              <div>・<span className="font-bold text-gray-900">編集・削除可</span>: 画像の編集・削除が可能</div>
             </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+            <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-400 rounded-lg p-2 bg-white">
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 rounded"
+                  className="flex items-center justify-between gap-2 p-2 hover:bg-blue-50 rounded border border-gray-300 bg-gray-50"
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-900 block truncate">{user.name}</span>
-                    <span className="text-xs text-gray-500 block truncate">{user.email}</span>
+                    <span className="text-sm text-gray-900 font-semibold block truncate">{user.name}</span>
+                    <span className="text-xs text-gray-700 block truncate">{user.email}</span>
                   </div>
                   <select
                     value={userPermissions[user.id] || 'none'}
                     onChange={(e) => setUserPermissionLevel(user.id, e.target.value as 'view' | 'download' | 'edit' | 'none')}
-                    className="text-sm border rounded px-2 py-1 bg-white"
+                    className="text-sm border-2 border-gray-400 rounded px-2 py-1.5 bg-white text-gray-900 font-semibold focus:border-blue-500 focus:outline-none"
                   >
                     <option value="none">権限なし</option>
                     <option value="view">閲覧のみ</option>
