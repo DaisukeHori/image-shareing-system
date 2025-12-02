@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import HelpTip from '@/components/HelpTip';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface Folder {
   id: string;
@@ -64,6 +65,12 @@ export default function ImagesPage() {
   const [moving, setMoving] = useState(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -228,30 +235,36 @@ export default function ImagesPage() {
     }
   }
 
-  async function handleBulkDelete() {
+  function handleBulkDelete() {
     const folderCount = selectedFolderIds.size;
     const imageCount = selectedImageIds.size;
     if (folderCount === 0 && imageCount === 0) return;
 
     const message = `${folderCount > 0 ? `${folderCount}個のフォルダ` : ''}${folderCount > 0 && imageCount > 0 ? 'と' : ''}${imageCount > 0 ? `${imageCount}枚の画像` : ''}を削除しますか？`;
-    if (!confirm(message)) return;
 
-    try {
-      // 並列実行で高速化
-      await Promise.all([
-        ...Array.from(selectedFolderIds).map(folderId =>
-          fetch(`/api/admin/folders/${folderId}`, { method: 'DELETE' })
-        ),
-        ...Array.from(selectedImageIds).map(imageId =>
-          fetch(`/api/admin/images/${imageId}`, { method: 'DELETE' })
-        ),
-      ]);
-      clearSelection();
-      fetchData();
-    } catch (error) {
-      console.error('Bulk delete failed:', error);
-      alert('一括削除に失敗しました');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: '一括削除の確認',
+      message,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await Promise.all([
+            ...Array.from(selectedFolderIds).map(folderId =>
+              fetch(`/api/admin/folders/${folderId}`, { method: 'DELETE' })
+            ),
+            ...Array.from(selectedImageIds).map(imageId =>
+              fetch(`/api/admin/images/${imageId}`, { method: 'DELETE' })
+            ),
+          ]);
+          clearSelection();
+          fetchData();
+        } catch (error) {
+          console.error('Bulk delete failed:', error);
+          alert('一括削除に失敗しました');
+        }
+      },
+    });
   }
 
   async function handleBulkMove(targetFolderId: string | null) {
@@ -432,6 +445,7 @@ export default function ImagesPage() {
       });
     };
 
+    // readEntries()は一度に最大100エントリしか返さないため、ループで全て取得
     let entries = await readEntries();
     while (entries.length > 0) {
       for (const entry of entries) {
@@ -440,6 +454,13 @@ export default function ImagesPage() {
           if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
             results.push({ folderName, file });
           }
+        } else if (entry.isDirectory) {
+          // サブフォルダを再帰的に処理（すべてのファイルを親フォルダに集約）
+          const subResults = await readDirectoryEntry(
+            entry as FileSystemDirectoryEntry,
+            folderName // 同じフォルダ名を使用して親に集約
+          );
+          results.push(...subResults);
         }
       }
       entries = await readEntries();
@@ -771,38 +792,50 @@ export default function ImagesPage() {
     }
   }
 
-  async function handleDeleteFolder(id: string) {
-    if (!confirm('このフォルダと中の画像をすべて削除しますか？')) return;
-
-    try {
-      const res = await fetch(`/api/admin/folders/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
-      } else {
-        alert(data.error || 'エラーが発生しました');
-      }
-    } catch (error) {
-      console.error('Failed to delete folder:', error);
-      alert('フォルダの削除に失敗しました');
-    }
+  function handleDeleteFolder(id: string) {
+    setConfirmModal({
+      isOpen: true,
+      title: 'フォルダの削除',
+      message: 'このフォルダと中の画像をすべて削除しますか？',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/folders/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            fetchData();
+          } else {
+            alert(data.error || 'エラーが発生しました');
+          }
+        } catch (error) {
+          console.error('Failed to delete folder:', error);
+          alert('フォルダの削除に失敗しました');
+        }
+      },
+    });
   }
 
-  async function handleDeleteImage(id: string) {
-    if (!confirm('この画像を削除しますか？')) return;
-
-    try {
-      const res = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
-      } else {
-        alert(data.error || 'エラーが発生しました');
-      }
-    } catch (error) {
-      console.error('Failed to delete image:', error);
-      alert('画像の削除に失敗しました');
-    }
+  function handleDeleteImage(id: string) {
+    setConfirmModal({
+      isOpen: true,
+      title: '画像の削除',
+      message: 'この画像を削除しますか？',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            fetchData();
+          } else {
+            alert(data.error || 'エラーが発生しました');
+          }
+        } catch (error) {
+          console.error('Failed to delete image:', error);
+          alert('画像の削除に失敗しました');
+        }
+      },
+    });
   }
 
   async function handleMoveImage(imageId: string, targetFolderId: string | null) {
@@ -1965,6 +1998,16 @@ export default function ImagesPage() {
           </div>
         </div>
       )}
+
+      {/* 確認モーダル */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="削除"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

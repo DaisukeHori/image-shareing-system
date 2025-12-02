@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface Folder {
   id: string;
@@ -17,6 +18,12 @@ export default function FoldersPage() {
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [formData, setFormData] = useState({ name: '', parent_id: '' });
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   useEffect(() => {
     fetchFolders();
@@ -81,24 +88,30 @@ export default function FoldersPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('このフォルダを削除しますか？')) return;
+  function handleDelete(id: string) {
+    setConfirmModal({
+      isOpen: true,
+      title: 'フォルダの削除',
+      message: 'このフォルダを削除しますか？',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/folders/${id}`, {
+            method: 'DELETE',
+          });
 
-    try {
-      const res = await fetch(`/api/admin/folders/${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        fetchFolders();
-      } else {
-        alert(data.error || 'エラーが発生しました');
-      }
-    } catch (error) {
-      console.error('Failed to delete:', error);
-      alert('削除に失敗しました');
-    }
+          const data = await res.json();
+          if (data.success) {
+            fetchFolders();
+          } else {
+            alert(data.error || 'エラーが発生しました');
+          }
+        } catch (error) {
+          console.error('Failed to delete:', error);
+          alert('削除に失敗しました');
+        }
+      },
+    });
   }
 
   function renderFolderTree(items: Folder[], level = 0) {
@@ -239,6 +252,16 @@ export default function FoldersPage() {
           </div>
         </div>
       )}
+
+      {/* 確認モーダル */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="削除"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
