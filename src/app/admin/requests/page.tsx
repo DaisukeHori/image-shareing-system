@@ -58,6 +58,9 @@ export default function RequestsPage() {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ requestId: string; requestNumber: string } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     fetchRequests();
@@ -78,6 +81,66 @@ export default function RequestsPage() {
       console.error('Failed to fetch requests:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleApprove(requestId: string) {
+    if (!confirm('この申請を承認しますか？')) return;
+
+    setActionLoading(requestId);
+    try {
+      const res = await fetch('/api/admin/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action: 'approve' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('承認しました');
+        fetchRequests();
+      } else {
+        alert(data.error || '承認に失敗しました');
+      }
+    } catch (error) {
+      console.error('Approve error:', error);
+      alert('承認に失敗しました');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReject() {
+    if (!rejectModal) return;
+    if (!rejectionReason.trim()) {
+      alert('却下理由を入力してください');
+      return;
+    }
+
+    setActionLoading(rejectModal.requestId);
+    try {
+      const res = await fetch('/api/admin/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: rejectModal.requestId,
+          action: 'reject',
+          rejectionReason,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('却下しました');
+        setRejectModal(null);
+        setRejectionReason('');
+        fetchRequests();
+      } else {
+        alert(data.error || '却下に失敗しました');
+      }
+    } catch (error) {
+      console.error('Reject error:', error);
+      alert('却下に失敗しました');
+    } finally {
+      setActionLoading(null);
     }
   }
 
@@ -148,6 +211,9 @@ export default function RequestsPage() {
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 申請日時
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                操作
               </th>
             </tr>
           </thead>
@@ -222,15 +288,43 @@ export default function RequestsPage() {
                       承認: {request.approver.name}
                     </div>
                   )}
+                  {request.rejection_reason && (
+                    <div className="text-xs text-red-500 mt-1" title={request.rejection_reason}>
+                      理由: {request.rejection_reason.substring(0, 20)}...
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(request.created_at)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  {request.status === 'pending' && (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleApprove(request.id)}
+                        disabled={actionLoading === request.id}
+                        className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {actionLoading === request.id ? '処理中...' : '承認'}
+                      </button>
+                      <button
+                        onClick={() => setRejectModal({ requestId: request.id, requestNumber: request.request_number })}
+                        disabled={actionLoading === request.id}
+                        className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+                      >
+                        却下
+                      </button>
+                    </div>
+                  )}
+                  {request.status !== 'pending' && (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
                 </td>
               </tr>
             ))}
             {requests.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                   申請がありません
                 </td>
               </tr>
@@ -238,6 +332,47 @@ export default function RequestsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* 却下理由モーダル */}
+      {rejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              申請を却下 - {rejectModal.requestNumber}
+            </h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                却下理由 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                rows={3}
+                placeholder="却下理由を入力してください"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectionReason('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={actionLoading === rejectModal.requestId}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {actionLoading === rejectModal.requestId ? '処理中...' : '却下する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
