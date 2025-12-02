@@ -125,14 +125,51 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
 
     // ユーザーがこの画像にアクセス権限を持っているか確認
-    const { data: permission } = await supabase
+    // 1. 画像の個別権限をチェック
+    const { data: imagePermission } = await supabase
       .from('image_permissions')
       .select('id')
       .eq('image_id', image_id)
       .eq('user_id', session.user.id)
       .single();
 
-    if (!permission) {
+    let hasAccess = !!imagePermission;
+
+    if (!hasAccess) {
+      // 2. 画像のフォルダを取得
+      const { data: image } = await supabase
+        .from('images')
+        .select('folder_id')
+        .eq('id', image_id)
+        .single();
+
+      if (image?.folder_id) {
+        // 3. フォルダの個別権限をチェック
+        const { data: folderPermission } = await supabase
+          .from('folder_permissions')
+          .select('id')
+          .eq('folder_id', image.folder_id)
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (folderPermission) {
+          hasAccess = true;
+        } else {
+          // 4. フォルダのデフォルト権限をチェック
+          const { data: folder } = await supabase
+            .from('folders')
+            .select('default_permission')
+            .eq('id', image.folder_id)
+            .single();
+
+          if (folder?.default_permission && folder.default_permission !== 'none') {
+            hasAccess = true;
+          }
+        }
+      }
+    }
+
+    if (!hasAccess) {
       return NextResponse.json(
         { success: false, error: 'この画像へのアクセス権限がありません' },
         { status: 403 }
