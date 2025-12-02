@@ -3,6 +3,21 @@ import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
 
+// Next.js App Router: ボディパーサーのサイズ制限を増加
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
+
+// 動的レンダリングを強制（キャッシュ無効化）
+export const dynamic = 'force-dynamic';
+
+// 最大実行時間を延長（秒単位、Vercel Proの場合は300まで可能）
+export const maxDuration = 60;
+
 // 画像一覧取得
 export async function GET(request: NextRequest) {
   try {

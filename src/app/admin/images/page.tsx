@@ -465,10 +465,17 @@ export default function ImagesPage() {
         }
 
         try {
+          // タイムアウトを60秒に設定（大きいファイル対応）
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
+
           const res = await fetch('/api/admin/images', {
             method: 'POST',
             body: formData,
+            signal: controller.signal,
           });
+
+          clearTimeout(timeoutId);
 
           const data = await res.json();
           if (!data.success) {
@@ -477,7 +484,16 @@ export default function ImagesPage() {
             errors.push(errorMsg);
           }
         } catch (fetchError) {
-          const errorMsg = `${file.name}: ネットワークエラー`;
+          let errorMsg = `${file.name}: `;
+          if (fetchError instanceof Error) {
+            if (fetchError.name === 'AbortError') {
+              errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
+            } else {
+              errorMsg += fetchError.message || 'ネットワークエラー';
+            }
+          } else {
+            errorMsg += 'ネットワークエラー';
+          }
           console.error(errorMsg, fetchError);
           errors.push(errorMsg);
         }
@@ -544,10 +560,17 @@ export default function ImagesPage() {
           }
 
           try {
+            // タイムアウトを60秒に設定（大きいファイル対応）
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+
             const res = await fetch('/api/admin/images', {
               method: 'POST',
               body: formData,
+              signal: controller.signal,
             });
+
+            clearTimeout(timeoutId);
 
             const data = await res.json();
             if (!data.success) {
@@ -556,7 +579,16 @@ export default function ImagesPage() {
               errors.push(errorMsg);
             }
           } catch (fetchError) {
-            const errorMsg = `${file.name}: ネットワークエラー`;
+            let errorMsg = `${file.name}: `;
+            if (fetchError instanceof Error) {
+              if (fetchError.name === 'AbortError') {
+                errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
+              } else {
+                errorMsg += fetchError.message || 'ネットワークエラー';
+              }
+            } else {
+              errorMsg += 'ネットワークエラー';
+            }
             console.error(errorMsg, fetchError);
             errors.push(errorMsg);
           }
