@@ -34,6 +34,9 @@ interface ApprovalRequest {
   approver_comment: string | null;
   rejection_reason: string | null;
   approver: { id: string; name: string } | null;
+  usage_end_date: string | null;
+  deletion_confirmed_user: boolean;
+  deletion_confirmed_approver: boolean;
 }
 
 const statusLabels: Record<string, { text: string; class: string }> = {
@@ -90,6 +93,8 @@ export default function Home() {
   const [downloading, setDownloading] = useState(false);
   // 申請詳細モーダル
   const [requestDetailModal, setRequestDetailModal] = useState<ApprovalRequest | null>(null);
+  // 掲載終了確認
+  const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
 
   // プレビュー用のナビゲーション関数
   const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
@@ -339,6 +344,36 @@ export default function Home() {
     } finally {
       setCancelling(false);
     }
+  }
+
+  // 掲載終了確認処理
+  async function handleConfirmDeletion(requestId: string) {
+    setConfirmingDeletionId(requestId);
+
+    try {
+      const res = await fetch('/api/requests/confirm-deletion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert(data.error || '確認に失敗しました');
+      }
+    } catch (error) {
+      console.error('Failed to confirm deletion:', error);
+      alert('確認に失敗しました');
+    } finally {
+      setConfirmingDeletionId(null);
+    }
+  }
+
+  // 掲載期限切れかどうかをチェック
+  function isExpiredUsage(usageEndDate: string | null) {
+    if (!usageEndDate) return false;
+    return new Date(usageEndDate) < new Date();
   }
 
   // 最大利用期限日（1年後）を計算
@@ -776,6 +811,33 @@ export default function Home() {
                           キャンセル
                         </button>
                       )}
+                      {/* 掲載期限切れのダウンロード済み申請 */}
+                      {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && (
+                        <div className="mt-3 p-2 bg-orange-50 rounded border border-orange-200">
+                          <p className="text-xs text-orange-700 mb-2">
+                            掲載期限: {new Date(request.usage_end_date).toLocaleDateString('ja-JP')}（終了）
+                          </p>
+                          {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
+                            <span className="text-xs text-green-600 font-medium">掲載終了確認済</span>
+                          ) : (
+                            <>
+                              <p className="text-xs text-red-600 mb-2">
+                                {!request.deletion_confirmed_user && '本人未確認 '}
+                                {!request.deletion_confirmed_approver && '承認者未確認'}
+                              </p>
+                              {!request.deletion_confirmed_user && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleConfirmDeletion(request.id); }}
+                                  disabled={confirmingDeletionId === request.id}
+                                  className="w-full px-3 py-2 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700 disabled:opacity-50"
+                                >
+                                  {confirmingDeletionId === request.id ? '確認中...' : '掲載終了を確認'}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -840,7 +902,7 @@ export default function Home() {
                             {formatDate(request.created_at)}
                           </td>
                           <td className="px-4 lg:px-6 py-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {request.status === 'approved' && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDownloadModal(request); }}
@@ -856,6 +918,18 @@ export default function Home() {
                                 >
                                   キャンセル
                                 </button>
+                              )}
+                              {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && !request.deletion_confirmed_user && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleConfirmDeletion(request.id); }}
+                                  disabled={confirmingDeletionId === request.id}
+                                  className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 disabled:opacity-50"
+                                >
+                                  {confirmingDeletionId === request.id ? '確認中...' : '掲載終了確認'}
+                                </button>
+                              )}
+                              {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && request.deletion_confirmed_user && request.deletion_confirmed_approver && (
+                                <span className="text-xs text-green-600 font-medium">確認済</span>
                               )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); setRequestDetailModal(request); }}

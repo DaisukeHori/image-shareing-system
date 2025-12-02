@@ -59,6 +59,7 @@ const statusLabels: Record<string, { text: string; class: string }> = {
 export default function RequestsPage() {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [approveModal, setApproveModal] = useState<{ requestId: string; requestNumber: string; requesterComment: string | null } | null>(null);
@@ -68,26 +69,63 @@ export default function RequestsPage() {
   const [detailModal, setDetailModal] = useState<ApprovalRequest | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; filename: string } | null>(null);
   const [resultModal, setResultModal] = useState<{ type: 'approve' | 'reject'; requestNumber: string } | null>(null);
+  const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRequests();
-  }, [statusFilter]);
+  }, [activeTab, statusFilter]);
 
   async function fetchRequests() {
     try {
-      const url = statusFilter
-        ? `/api/admin/requests?status=${statusFilter}`
-        : '/api/admin/requests';
+      let url = '/api/admin/requests';
+      const params = new URLSearchParams();
+
+      if (activeTab === 'pending') {
+        params.append('status', 'pending');
+      } else if (statusFilter) {
+        params.append('status', statusFilter);
+      }
+
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
 
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
-        setRequests(data.data);
+        // 履歴タブの場合はpending以外を表示
+        if (activeTab === 'history' && !statusFilter) {
+          setRequests(data.data.filter((r: ApprovalRequest) => r.status !== 'pending'));
+        } else {
+          setRequests(data.data);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch requests:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleConfirmDeletion(requestId: string) {
+    setConfirmingDeletionId(requestId);
+    try {
+      const res = await fetch('/api/admin/requests/confirm-deletion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchRequests();
+      } else {
+        alert(data.error || '確認に失敗しました');
+      }
+    } catch (error) {
+      console.error('Confirm deletion error:', error);
+      alert('確認に失敗しました');
+    } finally {
+      setConfirmingDeletionId(null);
     }
   }
 
@@ -184,22 +222,59 @@ export default function RequestsPage() {
     );
   }
 
+  // 未処理の申請数をカウント
+  const pendingCount = requests.filter(r => r.status === 'pending').length;
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">承認申請一覧</h1>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
-        >
-          <option value="">すべてのステータス</option>
-          <option value="pending">承認待ち</option>
-          <option value="approved">承認済み</option>
-          <option value="rejected">却下</option>
-          <option value="expired">期限切れ</option>
-          <option value="downloaded">ダウンロード済み</option>
-        </select>
+      <div className="flex flex-col gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">承認申請管理</h1>
+
+        {/* タブ */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setActiveTab('pending'); setStatusFilter(''); }}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              activeTab === 'pending'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+            }`}
+          >
+            承認待ち
+            {activeTab !== 'pending' && pendingCount > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setActiveTab('history'); setStatusFilter(''); }}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              activeTab === 'history'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+            }`}
+          >
+            履歴
+          </button>
+        </div>
+
+        {/* 履歴タブの場合のみステータスフィルター表示 */}
+        {activeTab === 'history' && (
+          <div className="flex justify-end">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="">すべての履歴</option>
+              <option value="approved">承認済み</option>
+              <option value="rejected">却下</option>
+              <option value="expired">期限切れ</option>
+              <option value="downloaded">ダウンロード済み</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* モバイル用カードビュー */}
@@ -277,10 +352,21 @@ export default function RequestsPage() {
                 {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
                   <span className="text-green-600">削除確認済</span>
                 ) : (
-                  <span className="text-red-600">
-                    {!request.deletion_confirmed_user && '本人未確認 '}
-                    {!request.deletion_confirmed_approver && '承認者未確認'}
-                  </span>
+                  <>
+                    <span className="text-red-600 block mb-2">
+                      {!request.deletion_confirmed_user && '本人未確認 '}
+                      {!request.deletion_confirmed_approver && '承認者未確認'}
+                    </span>
+                    {!request.deletion_confirmed_approver && (
+                      <button
+                        onClick={() => handleConfirmDeletion(request.id)}
+                        disabled={confirmingDeletionId === request.id}
+                        className="w-full px-3 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                      >
+                        {confirmingDeletionId === request.id ? '確認中...' : '掲載終了を確認'}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -484,7 +570,16 @@ export default function RequestsPage() {
                       </button>
                     </div>
                   )}
-                  {request.status !== 'pending' && (
+                  {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && !request.deletion_confirmed_approver && (
+                    <button
+                      onClick={() => handleConfirmDeletion(request.id)}
+                      disabled={confirmingDeletionId === request.id}
+                      className="px-3 py-1 text-xs font-medium text-white bg-orange-600 rounded hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {confirmingDeletionId === request.id ? '確認中...' : '掲載終了確認'}
+                    </button>
+                  )}
+                  {request.status !== 'pending' && !(request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && !request.deletion_confirmed_approver) && (
                     <span className="text-xs text-gray-400">-</span>
                   )}
                 </td>
