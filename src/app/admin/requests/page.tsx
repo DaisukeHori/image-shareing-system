@@ -67,6 +67,7 @@ export default function RequestsPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [detailModal, setDetailModal] = useState<ApprovalRequest | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; filename: string } | null>(null);
+  const [resultModal, setResultModal] = useState<{ type: 'approve' | 'reject'; requestNumber: string } | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -106,7 +107,7 @@ export default function RequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('承認しました');
+        setResultModal({ type: 'approve', requestNumber: approveModal.requestNumber });
         setApproveModal(null);
         setApproverComment('');
         fetchRequests();
@@ -142,7 +143,7 @@ export default function RequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('却下しました');
+        setResultModal({ type: 'reject', requestNumber: rejectModal.requestNumber });
         setRejectModal(null);
         setRejectionReason('');
         setApproverComment('');
@@ -613,6 +614,48 @@ export default function RequestsPage() {
               className="max-w-full max-h-[80vh] object-contain rounded-lg"
             />
             <p className="mt-4 text-white text-sm text-center">{previewImage.filename}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 承認/却下完了モーダル */}
+      {resultModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm text-center">
+            <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+              resultModal.type === 'approve' ? 'bg-green-100' : 'bg-red-100'
+            }`}>
+              {resultModal.type === 'approve' ? (
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+            </div>
+            <h3 className={`text-lg font-bold mb-2 ${
+              resultModal.type === 'approve' ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {resultModal.type === 'approve' ? '承認しました' : '却下しました'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              申請番号 {resultModal.requestNumber} を
+              {resultModal.type === 'approve' ? '承認' : '却下'}しました。
+              <br />
+              申請者に通知メールが送信されます。
+            </p>
+            <button
+              onClick={() => setResultModal(null)}
+              className={`w-full px-4 py-2 text-white rounded-lg text-sm ${
+                resultModal.type === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              閉じる
+            </button>
           </div>
         </div>
       )}
