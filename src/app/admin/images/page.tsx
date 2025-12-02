@@ -1094,7 +1094,7 @@ export default function ImagesPage() {
                   key={`image-${image.id}`}
                   draggable
                   onDragStart={(e) => handleImageDragStart(e, image.id)}
-                  onDragEnd={handleImageDragEnd}
+                  onDragEnd={handleDragEnd}
                   className={`hover:bg-gray-50 cursor-grab active:cursor-grabbing ${
                     draggingImageId === image.id ? 'opacity-50 bg-blue-50' : ''
                   } ${selectedImageIds.has(image.id) ? 'bg-blue-50' : ''}`}
