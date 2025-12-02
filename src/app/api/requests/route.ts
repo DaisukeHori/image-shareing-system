@@ -26,6 +26,10 @@ export async function GET() {
           storage_path,
           file_type,
           mime_type
+        ),
+        approver:users!approval_requests_approved_by_fkey (
+          id,
+          name
         )
       `)
       .eq('user_id', session.user.id)
