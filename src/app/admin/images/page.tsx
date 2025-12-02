@@ -78,6 +78,36 @@ export default function ImagesPage() {
     }
   }
 
+  // スワイプ用の状態
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
+
+  function handleTouchStart(e: React.TouchEvent) {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    setTouchEnd(e.targetTouches[0].clientX);
+  }
+
+  function handleTouchEnd() {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && hasNextImage) {
+      goToNextImage();
+    } else if (isRightSwipe && hasPrevImage) {
+      goToPrevImage();
+    }
+
+    setTouchStart(null);
+    setTouchEnd(null);
+  }
+
   // キーボードナビゲーション
   useEffect(() => {
     if (!previewImage) return;
@@ -1568,6 +1598,9 @@ export default function ImagesPage() {
           className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
           onClick={() => setPreviewImage(null)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* 閉じるボタン */}
           <button
