@@ -76,6 +76,8 @@ export default function Home() {
   // ダウンロード確認モーダル
   const [downloadModal, setDownloadModal] = useState<ApprovalRequest | null>(null);
   const [downloading, setDownloading] = useState(false);
+  // 申請詳細モーダル
+  const [requestDetailModal, setRequestDetailModal] = useState<ApprovalRequest | null>(null);
 
   // プレビュー用のナビゲーション関数
   const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
@@ -613,7 +615,11 @@ export default function Home() {
                 {/* モバイル用カードビュー */}
                 <div className="sm:hidden space-y-3">
                   {myRequests.map((request) => (
-                    <div key={request.id} className="bg-white rounded-lg shadow p-3">
+                    <div
+                      key={request.id}
+                      className="bg-white rounded-lg shadow p-3 cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => setRequestDetailModal(request)}
+                    >
                       <div className="flex gap-3">
                         <img
                           src={getImageUrl(request.image.storage_path)}
@@ -643,10 +649,15 @@ export default function Home() {
                             </p>
                           )}
                         </div>
+                        <div className="flex items-center text-gray-400">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </div>
                       {request.status === 'approved' && (
                         <button
-                          onClick={() => setDownloadModal(request)}
+                          onClick={(e) => { e.stopPropagation(); setDownloadModal(request); }}
                           className="w-full mt-3 px-3 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
                         >
                           ダウンロード
@@ -659,7 +670,7 @@ export default function Home() {
                       )}
                       {request.status === 'pending' && (
                         <button
-                          onClick={() => setCancellingRequestId(request.id)}
+                          onClick={(e) => { e.stopPropagation(); setCancellingRequestId(request.id); }}
                           className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200"
                         >
                           キャンセル
@@ -693,7 +704,11 @@ export default function Home() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {myRequests.map((request) => (
-                        <tr key={request.id}>
+                        <tr
+                          key={request.id}
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => setRequestDetailModal(request)}
+                        >
                           <td className="px-4 lg:px-6 py-4">
                             <div className="flex items-center">
                               <img
@@ -725,27 +740,30 @@ export default function Home() {
                             {formatDate(request.created_at)}
                           </td>
                           <td className="px-4 lg:px-6 py-4">
-                            {request.status === 'approved' && (
+                            <div className="flex items-center gap-2">
+                              {request.status === 'approved' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDownloadModal(request); }}
+                                  className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                                >
+                                  ダウンロード
+                                </button>
+                              )}
+                              {request.status === 'pending' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCancellingRequestId(request.id); }}
+                                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                                >
+                                  キャンセル
+                                </button>
+                              )}
                               <button
-                                onClick={() => setDownloadModal(request)}
-                                className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                                onClick={(e) => { e.stopPropagation(); setRequestDetailModal(request); }}
+                                className="px-3 py-1.5 text-blue-600 hover:text-blue-800 text-sm"
                               >
-                                ダウンロード
+                                詳細
                               </button>
-                            )}
-                            {request.status === 'rejected' && (
-                              <span className="text-xs text-red-600">
-                                {request.rejection_reason ? `却下: ${request.rejection_reason.substring(0, 20)}...` : '却下されました'}
-                              </span>
-                            )}
-                            {request.status === 'pending' && (
-                              <button
-                                onClick={() => setCancellingRequestId(request.id)}
-                                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
-                              >
-                                キャンセル
-                              </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1290,6 +1308,124 @@ export default function Home() {
               >
                 {downloading ? 'ダウンロード中...' : 'ダウンロード'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 申請詳細モーダル */}
+      {requestDetailModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">申請詳細</h3>
+              <button
+                onClick={() => setRequestDetailModal(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 画像プレビュー */}
+            <div className="mb-4">
+              <img
+                src={getImageUrl(requestDetailModal.image.storage_path)}
+                alt={requestDetailModal.image.original_filename}
+                className="w-full max-h-64 object-contain bg-gray-100 rounded"
+              />
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                {requestDetailModal.image.original_filename}
+              </p>
+            </div>
+
+            {/* ステータス */}
+            <div className="mb-4 text-center">
+              <span className={`inline-block px-4 py-2 text-sm font-medium rounded-full ${statusLabels[requestDetailModal.status].class}`}>
+                {statusLabels[requestDetailModal.status].text}
+              </span>
+            </div>
+
+            {/* 申請情報 */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-4 space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">申請番号:</span>
+                <span className="text-gray-900 font-medium">{requestDetailModal.request_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">申請日:</span>
+                <span className="text-gray-900">{formatDate(requestDetailModal.created_at)}</span>
+              </div>
+              {requestDetailModal.approver && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">承認者:</span>
+                  <span className="text-gray-900">{requestDetailModal.approver.name}</span>
+                </div>
+              )}
+              {requestDetailModal.expires_at && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">ダウンロード期限:</span>
+                  <span className="text-gray-900">{formatDate(requestDetailModal.expires_at)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 利用目的 */}
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">利用目的:</p>
+              <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-900">
+                {requestDetailModal.purpose}
+              </div>
+            </div>
+
+            {/* 承認者コメント */}
+            {requestDetailModal.approver_comment && (
+              <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-xs font-medium text-green-700 mb-1">承認者からのコメント:</p>
+                <p className="text-sm text-green-900">{requestDetailModal.approver_comment}</p>
+              </div>
+            )}
+
+            {/* 却下理由 */}
+            {requestDetailModal.status === 'rejected' && requestDetailModal.rejection_reason && (
+              <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-xs font-medium text-red-700 mb-1">却下理由:</p>
+                <p className="text-sm text-red-900">{requestDetailModal.rejection_reason}</p>
+              </div>
+            )}
+
+            {/* アクションボタン */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRequestDetailModal(null)}
+                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                閉じる
+              </button>
+              {requestDetailModal.status === 'approved' && (
+                <button
+                  onClick={() => {
+                    setRequestDetailModal(null);
+                    setDownloadModal(requestDetailModal);
+                  }}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                >
+                  ダウンロード
+                </button>
+              )}
+              {requestDetailModal.status === 'pending' && (
+                <button
+                  onClick={() => {
+                    setRequestDetailModal(null);
+                    setCancellingRequestId(requestDetailModal.id);
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                >
+                  申請をキャンセル
+                </button>
+              )}
             </div>
           </div>
         </div>
