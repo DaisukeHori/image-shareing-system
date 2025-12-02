@@ -57,6 +57,7 @@ export default function ImagesPage() {
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | 'root'>(null);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
+  const [previewImage, setPreviewImage] = useState<Image | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -845,7 +846,7 @@ export default function ImagesPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ファイル管理</h1>
-          <HelpTip content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロードできます。" />
+          <HelpTip content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロード可能。チェックボックスで複数選択し、一括移動・削除・権限設定ができます。選択したアイテムをドラッグして別のフォルダに移動することも可能です。" />
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -924,9 +925,12 @@ export default function ImagesPage() {
 
       {currentFolderId && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-gray-600">
-            📁 {breadcrumbs[breadcrumbs.length - 1]?.name}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              📁 {breadcrumbs[breadcrumbs.length - 1]?.name}
+            </span>
+            <HelpTip content="フォルダ権限は、フォルダ内の画像に動的に適用されます。画像を別フォルダに移動すると、移動先フォルダの権限が適用されます（画像個別の権限設定がある場合はそちらが優先）。" />
+          </div>
           <button
             onClick={() => {
               const folder = allFolders.find(f => f.id === currentFolderId);
@@ -942,12 +946,15 @@ export default function ImagesPage() {
       {/* 一括操作バー */}
       {(selectedFolderIds.size > 0 || selectedImageIds.size > 0) && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-blue-700 font-medium">
-            {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
-            {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
-            {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
-            {' '}選択中
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-blue-700 font-medium">
+              {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
+              {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
+              {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
+              {' '}選択中
+            </span>
+            <HelpTip content="選択したアイテムをドラッグして別のフォルダやパンくずリストにドロップすると移動できます。「権限設定」で一括権限変更、「移動」で移動先選択、「削除」で一括削除が可能です。" />
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={selectAll}
@@ -1065,12 +1072,21 @@ export default function ImagesPage() {
               >
                 ✕
               </button>
-              <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-100">
+              <div
+                className="aspect-square overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer relative"
+                onClick={() => setPreviewImage(image)}
+              >
                 <img
                   src={getImageUrl(image.storage_path)}
                   alt={image.original_filename}
                   className="w-full h-full object-cover pointer-events-none"
                 />
+                {/* 拡大アイコン */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all pointer-events-none">
+                  <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                </div>
               </div>
               <div className="p-2">
                 <p className="text-xs text-gray-900 truncate" title={image.original_filename}>
@@ -1082,7 +1098,7 @@ export default function ImagesPage() {
               </div>
               <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100">
                 <button
-                  onClick={() => openPermissionModal(image)}
+                  onClick={(e) => { e.stopPropagation(); openPermissionModal(image); }}
                   className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
                   権限
@@ -1504,6 +1520,57 @@ export default function ImagesPage() {
               >
                 {saving ? '保存中...' : '権限を設定'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 画像プレビューモーダル */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div
+            className="max-w-full max-h-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={getImageUrl(previewImage.storage_path)}
+              alt={previewImage.original_filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <p className="text-white text-sm text-center">{previewImage.original_filename}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setPreviewImage(null);
+                    openPermissionModal(previewImage);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                >
+                  権限設定
+                </button>
+                <button
+                  onClick={() => {
+                    setPreviewImage(null);
+                    handleDeleteImage(previewImage.id);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                >
+                  削除
+                </button>
+              </div>
             </div>
           </div>
         </div>
