@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import HelpTip from '@/components/HelpTip';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface User {
   id: string;
@@ -30,6 +31,12 @@ export default function DepartmentsPage() {
     updated: number;
     errors: string[];
   } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -99,24 +106,30 @@ export default function DepartmentsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('この所属を削除しますか？')) return;
+  function handleDelete(id: string) {
+    setConfirmModal({
+      isOpen: true,
+      title: '所属の削除',
+      message: 'この所属を削除しますか？',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/departments/${id}`, {
+            method: 'DELETE',
+          });
 
-    try {
-      const res = await fetch(`/api/admin/departments/${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
-      } else {
-        alert(data.error || 'エラーが発生しました');
-      }
-    } catch (error) {
-      console.error('Failed to delete:', error);
-      alert('削除に失敗しました');
-    }
+          const data = await res.json();
+          if (data.success) {
+            fetchData();
+          } else {
+            alert(data.error || 'エラーが発生しました');
+          }
+        } catch (error) {
+          console.error('Failed to delete:', error);
+          alert('削除に失敗しました');
+        }
+      },
+    });
   }
 
   async function handleExport() {
@@ -384,6 +397,16 @@ export default function DepartmentsPage() {
           </div>
         </div>
       )}
+
+      {/* 確認モーダル */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="削除"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
