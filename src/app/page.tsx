@@ -41,6 +41,7 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'images' | 'requests'>('images');
   const [showMenu, setShowMenu] = useState(false);
+  const [previewImage, setPreviewImage] = useState<Image | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -251,23 +252,34 @@ export default function Home() {
 
         {activeTab === 'images' ? (
           <>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
-              利用可能な画像
-            </h2>
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+                利用可能な画像
+              </h2>
+              <HelpTip content="【権限レベル】閲覧：申請してダウンロード可能 / DL可：直接ダウンロード可能 / 編集可：画像の編集・削除も可能。権限はフォルダまたは画像ごとに設定されています。" />
+            </div>
             {images.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
                 {images.map((image) => (
                   <div
                     key={image.id}
-                    onClick={() => setSelectedImage(image)}
-                    className="bg-white rounded-lg shadow overflow-hidden cursor-pointer hover:shadow-lg transition-shadow active:scale-[0.98]"
+                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow group"
                   >
-                    <div className="aspect-square bg-gray-100 relative">
+                    <div
+                      className="aspect-square bg-gray-100 relative cursor-pointer"
+                      onClick={() => setPreviewImage(image)}
+                    >
                       <img
                         src={getImageUrl(image.storage_path)}
                         alt={image.original_filename}
                         className="w-full h-full object-cover"
                       />
+                      {/* 拡大アイコン */}
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all">
+                        <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
                       {/* 権限レベルバッジ */}
                       <div className="absolute top-1 right-1">
                         {image.permission_level === 'edit' && (
@@ -291,9 +303,21 @@ export default function Home() {
                       <p className="text-xs sm:text-sm text-gray-900 truncate">
                         {image.original_filename}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {image.folder?.name || 'ルート'}
-                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-gray-500">
+                          {image.folder?.name || 'ルート'}
+                        </p>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedImage(image); }}
+                          className={`px-2 py-0.5 text-[10px] rounded text-white ${
+                            image.permission_level === 'view'
+                              ? 'bg-blue-500 hover:bg-blue-600'
+                              : 'bg-green-500 hover:bg-green-600'
+                          }`}
+                        >
+                          {image.permission_level === 'view' ? '申請' : 'DL'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -308,9 +332,12 @@ export default function Home() {
           </>
         ) : (
           <>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
-              申請履歴
-            </h2>
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+                申請履歴
+              </h2>
+              <HelpTip content="【ステータス】承認待ち：管理者の承認を待っています / ダウンロード可：7日以内に1回ダウンロードできます / DL済み：ダウンロード完了 / 却下：申請が却下されました / 期限切れ：ダウンロード期限が過ぎました" />
+            </div>
             {myRequests.length > 0 ? (
               <>
                 {/* モバイル用カードビュー */}
@@ -531,6 +558,50 @@ export default function Home() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 画像プレビューモーダル */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div
+            className="max-w-full max-h-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={getImageUrl(previewImage.storage_path)}
+              alt={previewImage.original_filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <p className="text-white text-sm text-center">{previewImage.original_filename}</p>
+              <button
+                onClick={() => {
+                  setPreviewImage(null);
+                  setSelectedImage(previewImage);
+                }}
+                className={`px-4 py-2 rounded-lg text-white text-sm ${
+                  previewImage.permission_level === 'view'
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {previewImage.permission_level === 'view' ? '利用申請' : 'ダウンロード'}
+              </button>
+            </div>
           </div>
         </div>
       )}

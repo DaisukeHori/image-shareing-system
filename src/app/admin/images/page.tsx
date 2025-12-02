@@ -57,6 +57,7 @@ export default function ImagesPage() {
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | 'root'>(null);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
+  const [previewImage, setPreviewImage] = useState<Image | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,6 +104,56 @@ export default function ImagesPage() {
   }
 
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showBulkPermissionModal, setShowBulkPermissionModal] = useState(false);
+  const [bulkPermissionLevel, setBulkPermissionLevel] = useState<'view' | 'download' | 'edit' | 'none'>('view');
+
+  async function handleBulkPermission() {
+    const imageCount = selectedImageIds.size;
+    const folderCount = selectedFolderIds.size;
+    if (imageCount === 0 && folderCount === 0) return;
+
+    // 権限なしの場合は既存権限を削除
+    const usersWithPermission = Object.entries(userPermissions).filter(([, level]) => level !== undefined);
+
+    if (usersWithPermission.length === 0 && bulkPermissionLevel !== 'none') {
+      alert('権限を設定するユーザーを選択してください');
+      return;
+    }
+
+    try {
+      const permissions = usersWithPermission.map(([user_id, level]) => ({
+        user_id,
+        level,
+      }));
+
+      // 並列実行で高速化
+      await Promise.all([
+        ...Array.from(selectedImageIds).map(imageId =>
+          fetch(`/api/admin/images/${imageId}/permissions`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ permissions }),
+          })
+        ),
+        ...Array.from(selectedFolderIds).map(folderId =>
+          fetch(`/api/admin/folders/${folderId}/permissions`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ permissions }),
+          })
+        ),
+      ]);
+
+      setShowBulkPermissionModal(false);
+      setUserPermissions({});
+      clearSelection();
+      fetchData();
+      alert('権限を設定しました');
+    } catch (error) {
+      console.error('Bulk permission failed:', error);
+      alert('一括権限設定に失敗しました');
+    }
+  }
 
   async function handleBulkDelete() {
     const folderCount = selectedFolderIds.size;
@@ -795,7 +846,7 @@ export default function ImagesPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ファイル管理</h1>
-          <HelpTip content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロードできます。" />
+          <HelpTip content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロード可能。チェックボックスで複数選択し、一括移動・削除・権限設定ができます。選択したアイテムをドラッグして別のフォルダに移動することも可能です。" />
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -874,9 +925,12 @@ export default function ImagesPage() {
 
       {currentFolderId && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-gray-600">
-            📁 {breadcrumbs[breadcrumbs.length - 1]?.name}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              📁 {breadcrumbs[breadcrumbs.length - 1]?.name}
+            </span>
+            <HelpTip content="フォルダ権限は、フォルダ内の画像に動的に適用されます。画像を別フォルダに移動すると、移動先フォルダの権限が適用されます（画像個別の権限設定がある場合はそちらが優先）。" />
+          </div>
           <button
             onClick={() => {
               const folder = allFolders.find(f => f.id === currentFolderId);
@@ -892,18 +946,27 @@ export default function ImagesPage() {
       {/* 一括操作バー */}
       {(selectedFolderIds.size > 0 || selectedImageIds.size > 0) && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-blue-700 font-medium">
-            {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
-            {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
-            {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
-            {' '}選択中
-          </span>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-blue-700 font-medium">
+              {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
+              {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
+              {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
+              {' '}選択中
+            </span>
+            <HelpTip content="選択したアイテムをドラッグして別のフォルダやパンくずリストにドロップすると移動できます。「権限設定」で一括権限変更、「移動」で移動先選択、「削除」で一括削除が可能です。" />
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={selectAll}
               className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
             >
               すべて選択
+            </button>
+            <button
+              onClick={() => { setUserPermissions({}); setShowBulkPermissionModal(true); }}
+              className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+            >
+              権限設定
             </button>
             <button
               onClick={() => setShowMoveModal(true)}
@@ -1009,12 +1072,21 @@ export default function ImagesPage() {
               >
                 ✕
               </button>
-              <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-100">
+              <div
+                className="aspect-square overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer relative"
+                onClick={() => setPreviewImage(image)}
+              >
                 <img
                   src={getImageUrl(image.storage_path)}
                   alt={image.original_filename}
                   className="w-full h-full object-cover pointer-events-none"
                 />
+                {/* 拡大アイコン */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all pointer-events-none">
+                  <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                </div>
               </div>
               <div className="p-2">
                 <p className="text-xs text-gray-900 truncate" title={image.original_filename}>
@@ -1026,7 +1098,7 @@ export default function ImagesPage() {
               </div>
               <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100">
                 <button
-                  onClick={() => openPermissionModal(image)}
+                  onClick={(e) => { e.stopPropagation(); openPermissionModal(image); }}
                   className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
                   権限
@@ -1388,6 +1460,117 @@ export default function ImagesPage() {
               >
                 キャンセル
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 一括権限設定モーダル */}
+      {showBulkPermissionModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+              一括権限設定
+            </h2>
+            <p className="text-sm text-gray-500 mb-2">
+              {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
+              {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
+              {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
+              に権限を設定します
+            </p>
+            <div className="text-xs text-gray-400 mb-4 space-y-1">
+              <div>・<span className="font-medium">閲覧のみ</span>: 画像を見れるが申請が必要</div>
+              <div>・<span className="font-medium">ダウンロード可</span>: 直接ダウンロード可能</div>
+              <div>・<span className="font-medium">編集・削除可</span>: 画像の編集・削除が可能</div>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 rounded"
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-900 block truncate">{user.name}</span>
+                    <span className="text-xs text-gray-500 block truncate">{user.email}</span>
+                  </div>
+                  <select
+                    value={userPermissions[user.id] || 'none'}
+                    onChange={(e) => setUserPermissionLevel(user.id, e.target.value as 'view' | 'download' | 'edit' | 'none')}
+                    className="text-sm border rounded px-2 py-1 bg-white"
+                  >
+                    <option value="none">権限なし</option>
+                    <option value="view">閲覧のみ</option>
+                    <option value="download">ダウンロード可</option>
+                    <option value="edit">編集・削除可</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => { setShowBulkPermissionModal(false); setUserPermissions({}); }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleBulkPermission}
+                disabled={saving}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {saving ? '保存中...' : '権限を設定'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 画像プレビューモーダル */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div
+            className="max-w-full max-h-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={getImageUrl(previewImage.storage_path)}
+              alt={previewImage.original_filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <p className="text-white text-sm text-center">{previewImage.original_filename}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setPreviewImage(null);
+                    openPermissionModal(previewImage);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                >
+                  権限設定
+                </button>
+                <button
+                  onClick={() => {
+                    setPreviewImage(null);
+                    handleDeleteImage(previewImage.id);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                >
+                  削除
+                </button>
+              </div>
             </div>
           </div>
         </div>
