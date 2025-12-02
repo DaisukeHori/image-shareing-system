@@ -34,29 +34,31 @@ function getImagePublicUrl(storagePath: string): string {
 
 /**
  * Bulletproof email button generator
- * Uses padding + border method for maximum email client compatibility
- * Works in Gmail, Outlook, Apple Mail, and mobile clients
+ * Uses VML for Outlook and standard CSS for other clients
+ * Based on https://buttons.cm/ approach
  */
 function createEmailButton(
   href: string,
   text: string,
   bgColor: string,
-  options?: { width?: string }
+  options?: { width?: number; height?: number }
 ): string {
-  const widthStyle = options?.width ? `width: ${options.width};` : '';
+  const width = options?.width || 200;
+  const height = options?.height || 48;
+
   return `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; ${widthStyle}">
-      <tr>
-        <td align="center" style="border-radius: 8px; background-color: ${bgColor};">
-          <a href="${href}" target="_blank" rel="noopener"
-             style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 8px; border: 1px solid ${bgColor}; mso-padding-alt: 0;">
-            <!--[if mso]><i style="mso-font-width:150%;mso-text-raise:30pt" hidden>&emsp;</i><span style="mso-text-raise:15pt;"><![endif]-->
-            ${text}
-            <!--[if mso]></span><i style="mso-font-width:150%;" hidden>&emsp;&#8203;</i><![endif]-->
-          </a>
-        </td>
-      </tr>
-    </table>
+    <!--[if mso]>
+    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:${height}px;v-text-anchor:middle;width:${width}px;" arcsize="17%" stroke="f" fillcolor="${bgColor}">
+      <w:anchorlock/>
+      <center>
+    <![endif]-->
+    <a href="${href}" target="_blank" rel="noopener" style="background-color:${bgColor}; border-radius:8px; color:#ffffff; display:inline-block; font-family:'Helvetica Neue',Arial,sans-serif; font-size:16px; font-weight:bold; line-height:${height}px; text-align:center; text-decoration:none; width:${width}px; -webkit-text-size-adjust:none;">
+      ${text}
+    </a>
+    <!--[if mso]>
+      </center>
+    </v:roundrect>
+    <![endif]-->
   `;
 }
 
@@ -205,10 +207,10 @@ export async function sendApprovalRequestEmail(
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
             <tr>
               <td style="padding-right: 10px;">
-                ${createEmailButton(approveUrl, '✓ 承認する', '#22c55e')}
+                ${createEmailButton(approveUrl, '✓ 承認する', '#22c55e', { width: 150, height: 48 })}
               </td>
               <td style="padding-left: 10px;">
-                ${createEmailButton(rejectUrl, '✕ 却下する', '#ef4444')}
+                ${createEmailButton(rejectUrl, '✕ 却下する', '#ef4444', { width: 150, height: 48 })}
               </td>
             </tr>
           </table>
@@ -312,7 +314,7 @@ export async function sendRequestConfirmationEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        ${createEmailButton(`${appUrl}?tab=requests`, '申請履歴を確認する', '#2563eb')}
+        ${createEmailButton(`${appUrl}?tab=requests`, '申請履歴を確認する', '#2563eb', { width: 220, height: 48 })}
       </div>
 
       <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
@@ -397,7 +399,7 @@ export async function sendApprovalResultEmail(
         isApproved
           ? `
         <div style="margin: 30px 0; text-align: center;">
-          ${createEmailButton(`${appUrl}?tab=requests`, '画像をダウンロード', '#22c55e')}
+          ${createEmailButton(`${appUrl}?tab=requests`, '画像をダウンロード', '#22c55e', { width: 220, height: 48 })}
         </div>
 
         <div style="background: #f0f9ff; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
@@ -498,7 +500,7 @@ export async function sendDeletionReminderEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        ${createEmailButton(confirmUrl, `削除を確認する（${roleLabel}）`, '#2563eb')}
+        ${createEmailButton(confirmUrl, `削除を確認する（${roleLabel}）`, '#2563eb', { width: 250, height: 48 })}
       </div>
 
       <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
