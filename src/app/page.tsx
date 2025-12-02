@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import HelpTip from '@/components/HelpTip';
 
@@ -21,7 +21,11 @@ interface Image {
   permission_level: 'view' | 'download' | 'edit';
   file_type?: 'image' | 'video';
   mime_type?: string;
+  created_at: string;
 }
+
+type SortKey = 'filename' | 'created_at';
+type SortOrder = 'asc' | 'desc';
 
 interface ApprovalRequest {
   id: string;
@@ -95,21 +99,37 @@ export default function Home() {
   const [requestDetailModal, setRequestDetailModal] = useState<ApprovalRequest | null>(null);
   // 掲載終了確認
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
+  // 並び替え
+  const [sortKey, setSortKey] = useState<SortKey>('filename');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
-  // プレビュー用のナビゲーション関数
-  const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
+  // ソート済み画像（useMemoで最適化）
+  const sortedImages = useMemo(() => {
+    return [...images].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === 'filename') {
+        comparison = a.original_filename.localeCompare(b.original_filename, 'ja');
+      } else if (sortKey === 'created_at') {
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [images, sortKey, sortOrder]);
+
+  // プレビュー用のナビゲーション関数（sortedImagesを使用）
+  const currentPreviewIndex = previewImage ? sortedImages.findIndex(img => img.id === previewImage.id) : -1;
   const hasPrevImage = currentPreviewIndex > 0;
-  const hasNextImage = currentPreviewIndex >= 0 && currentPreviewIndex < images.length - 1;
+  const hasNextImage = currentPreviewIndex >= 0 && currentPreviewIndex < sortedImages.length - 1;
 
   function goToPrevImage() {
     if (hasPrevImage) {
-      setPreviewImage(images[currentPreviewIndex - 1]);
+      setPreviewImage(sortedImages[currentPreviewIndex - 1]);
     }
   }
 
   function goToNextImage() {
     if (hasNextImage) {
-      setPreviewImage(images[currentPreviewIndex + 1]);
+      setPreviewImage(sortedImages[currentPreviewIndex + 1]);
     }
   }
 
@@ -609,7 +629,26 @@ export default function Home() {
               ))}
             </div>
 
-            {folders.length > 0 || images.length > 0 ? (
+            {/* 並び替えUI */}
+            <div className="flex items-center justify-end gap-2 mb-3">
+              <span className="text-xs text-gray-500">並び替え:</span>
+              <select
+                value={`${sortKey}-${sortOrder}`}
+                onChange={(e) => {
+                  const [key, order] = e.target.value.split('-') as [SortKey, SortOrder];
+                  setSortKey(key);
+                  setSortOrder(order);
+                }}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="created_at-desc">作成日（新しい順）</option>
+                <option value="created_at-asc">作成日（古い順）</option>
+                <option value="filename-asc">ファイル名（A→Z）</option>
+                <option value="filename-desc">ファイル名（Z→A）</option>
+              </select>
+            </div>
+
+            {folders.length > 0 || sortedImages.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
                 {/* フォルダ表示 */}
                 {folders.map((folder) => (
@@ -648,7 +687,7 @@ export default function Home() {
                 ))}
 
                 {/* 画像表示 */}
-                {images.map((image) => (
+                {sortedImages.map((image) => (
                   <div
                     key={image.id}
                     className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg group transition-all duration-200 ease-out hover:scale-[1.02] active:scale-95"
@@ -1315,7 +1354,7 @@ export default function Home() {
             <div className="mt-4 flex flex-col items-center gap-2">
               <p className="text-white text-sm text-center">
                 {previewImage.original_filename}
-                <span className="text-gray-400 ml-2">({currentPreviewIndex + 1} / {images.length})</span>
+                <span className="text-gray-400 ml-2">({currentPreviewIndex + 1} / {sortedImages.length})</span>
               </p>
               <button
                 onClick={() => {
