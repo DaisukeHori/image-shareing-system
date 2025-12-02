@@ -61,6 +61,43 @@ export default function ImagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
+  // プレビュー用のナビゲーション関数
+  const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
+  const hasPrevImage = currentPreviewIndex > 0;
+  const hasNextImage = currentPreviewIndex >= 0 && currentPreviewIndex < images.length - 1;
+
+  function goToPrevImage() {
+    if (hasPrevImage) {
+      setPreviewImage(images[currentPreviewIndex - 1]);
+    }
+  }
+
+  function goToNextImage() {
+    if (hasNextImage) {
+      setPreviewImage(images[currentPreviewIndex + 1]);
+    }
+  }
+
+  // キーボードナビゲーション
+  useEffect(() => {
+    if (!previewImage) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goToPrevImage();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goToNextImage();
+      } else if (e.key === 'Escape') {
+        setPreviewImage(null);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewImage, currentPreviewIndex]);
+
   // 選択をクリア（フォルダ移動時など）
   useEffect(() => {
     setSelectedFolderIds(new Set());
@@ -1532,6 +1569,7 @@ export default function ImagesPage() {
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
           onClick={() => setPreviewImage(null)}
         >
+          {/* 閉じるボタン */}
           <button
             onClick={() => setPreviewImage(null)}
             className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
@@ -1540,6 +1578,31 @@ export default function ImagesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+
+          {/* 左矢印 */}
+          {hasPrevImage && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goToPrevImage(); }}
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
+            >
+              <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* 右矢印 */}
+          {hasNextImage && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goToNextImage(); }}
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
+            >
+              <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+
           <div
             className="max-w-full max-h-full flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
@@ -1547,10 +1610,13 @@ export default function ImagesPage() {
             <img
               src={getImageUrl(previewImage.storage_path)}
               alt={previewImage.original_filename}
-              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+              className="max-w-full max-h-[70vh] object-contain rounded-lg"
             />
             <div className="mt-4 flex flex-col items-center gap-2">
-              <p className="text-white text-sm text-center">{previewImage.original_filename}</p>
+              <p className="text-white text-sm text-center">
+                {previewImage.original_filename}
+                <span className="text-gray-400 ml-2">({currentPreviewIndex + 1} / {images.length})</span>
+              </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
