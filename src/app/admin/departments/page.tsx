@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface User {
   id: string;
@@ -23,6 +23,13 @@ export default function DepartmentsPage() {
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [formData, setFormData] = useState({ name: '', manager_user_id: '' });
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    created: number;
+    updated: number;
+    errors: string[];
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -111,6 +118,44 @@ export default function DepartmentsPage() {
     }
   }
 
+  async function handleExport() {
+    window.location.href = '/api/admin/departments/csv';
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/departments/csv', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setImportResult(data.results);
+        fetchData();
+      } else {
+        alert(data.error || 'インポートに失敗しました');
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('インポートに失敗しました');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -121,27 +166,80 @@ export default function DepartmentsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">所属管理</h1>
-        <button
-          onClick={() => openModal()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          新規作成
-        </button>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">所属管理</h1>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleExport}
+            className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+          >
+            CSVエクスポート
+          </button>
+          <label className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer text-sm">
+            {importing ? 'インポート中...' : 'CSVインポート'}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImport}
+              disabled={importing}
+              className="hidden"
+            />
+          </label>
+          <button
+            onClick={() => openModal()}
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            新規作成
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* インポート結果 */}
+      {importResult && (
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className="text-green-600">作成: {importResult.created}件</span>
+            <span className="text-blue-600">更新: {importResult.updated}件</span>
+            {importResult.errors.length > 0 && (
+              <span className="text-red-600">エラー: {importResult.errors.length}件</span>
+            )}
+          </div>
+          {importResult.errors.length > 0 && (
+            <div className="mt-2 text-xs text-red-600">
+              {importResult.errors.slice(0, 5).map((err, i) => (
+                <div key={i}>{err}</div>
+              ))}
+              {importResult.errors.length > 5 && (
+                <div>... 他 {importResult.errors.length - 5}件</div>
+              )}
+            </div>
+          )}
+          <button
+            onClick={() => setImportResult(null)}
+            className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
+      {/* CSVフォーマット説明 */}
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+        CSVフォーマット: 所属名,所属長メールアドレス
+      </div>
+
+      <div className="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 所属名
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 所属長
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
               </th>
             </tr>
@@ -149,16 +247,16 @@ export default function DepartmentsPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {departments.map((dept) => (
               <tr key={dept.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {dept.name}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {dept.manager?.name || '未設定'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm">
                   <button
                     onClick={() => openModal(dept)}
-                    className="text-blue-600 hover:text-blue-800 mr-4"
+                    className="text-blue-600 hover:text-blue-800 mr-2 sm:mr-4"
                   >
                     編集
                   </button>
@@ -184,9 +282,9 @@ export default function DepartmentsPage() {
 
       {/* モーダル */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               {editingDepartment ? '所属を編集' : '新規所属'}
             </h2>
             <form onSubmit={handleSubmit}>

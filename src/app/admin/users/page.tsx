@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface Department {
   id: string;
@@ -33,6 +33,13 @@ export default function UsersPage() {
     is_active: true,
   });
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    created: number;
+    updated: number;
+    errors: string[];
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -132,6 +139,44 @@ export default function UsersPage() {
     }
   }
 
+  async function handleExport() {
+    window.location.href = '/api/admin/users/csv';
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/users/csv', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setImportResult(data.results);
+        fetchData();
+      } else {
+        alert(data.error || 'インポートに失敗しました');
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('インポートに失敗しました');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -142,36 +187,149 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">ユーザー管理</h1>
-        <button
-          onClick={() => openModal()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          新規作成
-        </button>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ユーザー管理</h1>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleExport}
+            className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+          >
+            CSVエクスポート
+          </button>
+          <label className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer text-sm">
+            {importing ? 'インポート中...' : 'CSVインポート'}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImport}
+              disabled={importing}
+              className="hidden"
+            />
+          </label>
+          <button
+            onClick={() => openModal()}
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            新規作成
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* インポート結果 */}
+      {importResult && (
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className="text-green-600">作成: {importResult.created}件</span>
+            <span className="text-blue-600">更新: {importResult.updated}件</span>
+            {importResult.errors.length > 0 && (
+              <span className="text-red-600">エラー: {importResult.errors.length}件</span>
+            )}
+          </div>
+          {importResult.errors.length > 0 && (
+            <div className="mt-2 text-xs text-red-600">
+              {importResult.errors.slice(0, 5).map((err, i) => (
+                <div key={i}>{err}</div>
+              ))}
+              {importResult.errors.length > 5 && (
+                <div>... 他 {importResult.errors.length - 5}件</div>
+              )}
+            </div>
+          )}
+          <button
+            onClick={() => setImportResult(null)}
+            className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
+      {/* CSVフォーマット説明 */}
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+        CSVフォーマット: メールアドレス,名前,所属名,権限(admin/user),社長(はい/いいえ),有効(はい/いいえ)
+      </div>
+
+      {/* モバイル用カードビュー */}
+      <div className="sm:hidden space-y-3">
+        {users.map((user) => (
+          <div key={user.id} className="bg-white shadow rounded-lg p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <span className="font-medium text-gray-900">{user.name}</span>
+                {user.is_ceo && (
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
+                    社長
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <span
+                  className={`px-2 py-0.5 text-xs rounded ${
+                    user.role === 'admin'
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {user.role === 'admin' ? '管理者' : '一般'}
+                </span>
+                <span
+                  className={`px-2 py-0.5 text-xs rounded ${
+                    user.is_active
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {user.is_active ? '有効' : '無効'}
+                </span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 truncate">{user.email}</p>
+            <p className="text-sm text-gray-500">{user.department?.name || '未所属'}</p>
+            <div className="mt-3 flex gap-3">
+              <button
+                onClick={() => openModal(user)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                編集
+              </button>
+              <button
+                onClick={() => handleDelete(user.id)}
+                className="text-sm text-red-600 hover:text-red-800"
+              >
+                削除
+              </button>
+            </div>
+          </div>
+        ))}
+        {users.length === 0 && (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            ユーザーが登録されていません
+          </div>
+        )}
+      </div>
+
+      {/* デスクトップ用テーブルビュー */}
+      <div className="hidden sm:block bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 名前
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                メールアドレス
+              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                メール
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 所属
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 権限
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 状態
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
               </th>
             </tr>
@@ -179,7 +337,7 @@ export default function UsersPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {users.map((user) => (
               <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <span className="text-sm font-medium text-gray-900">
                       {user.name}
@@ -191,13 +349,13 @@ export default function UsersPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.email}
+                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span className="truncate block max-w-[150px] lg:max-w-none">{user.email}</span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {user.department?.name || '未所属'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                   <span
                     className={`px-2 py-0.5 text-xs rounded ${
                       user.role === 'admin'
@@ -208,7 +366,7 @@ export default function UsersPage() {
                     {user.role === 'admin' ? '管理者' : '一般'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                   <span
                     className={`px-2 py-0.5 text-xs rounded ${
                       user.is_active
@@ -219,10 +377,10 @@ export default function UsersPage() {
                     {user.is_active ? '有効' : '無効'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm">
                   <button
                     onClick={() => openModal(user)}
-                    className="text-blue-600 hover:text-blue-800 mr-4"
+                    className="text-blue-600 hover:text-blue-800 mr-2 lg:mr-4"
                   >
                     編集
                   </button>
@@ -248,9 +406,9 @@ export default function UsersPage() {
 
       {/* モーダル */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               {editingUser ? 'ユーザーを編集' : '新規ユーザー'}
             </h2>
             <form onSubmit={handleSubmit}>
@@ -320,7 +478,7 @@ export default function UsersPage() {
                     <option value="admin">管理者</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
