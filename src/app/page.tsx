@@ -674,24 +674,27 @@ export default function Home() {
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               {selectedImage.permission_level === 'view' ? '画像の利用申請' : '画像のダウンロード'}
             </h2>
-            <div className="mb-4">
-              {isVideo(selectedImage) ? (
-                <video
-                  src={getImageUrl(selectedImage.storage_path)}
-                  controls
-                  className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
-                />
-              ) : (
-                <img
-                  src={getImageUrl(selectedImage.storage_path)}
-                  alt={selectedImage.original_filename}
-                  className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
-                />
-              )}
-              <p className="text-sm text-gray-500 mt-2 truncate">
-                {selectedImage.original_filename}
-              </p>
-            </div>
+            {/* Step2（同意書画面）では画像を非表示にしてスペース確保 */}
+            {!(selectedImage.permission_level === 'view' && requestStep === 2) && (
+              <div className="mb-4">
+                {isVideo(selectedImage) ? (
+                  <video
+                    src={getImageUrl(selectedImage.storage_path)}
+                    controls
+                    className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
+                  />
+                ) : (
+                  <img
+                    src={getImageUrl(selectedImage.storage_path)}
+                    alt={selectedImage.original_filename}
+                    className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
+                  />
+                )}
+                <p className="text-sm text-gray-500 mt-2 truncate">
+                  {selectedImage.original_filename}
+                </p>
+              </div>
+            )}
 
             {/* ダウンロード可/編集可の場合は直接ダウンロード */}
             {(selectedImage.permission_level === 'download' || selectedImage.permission_level === 'edit') && (
