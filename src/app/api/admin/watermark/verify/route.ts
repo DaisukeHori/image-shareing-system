@@ -74,8 +74,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Watermark verify error:', error);
+    let errorMessage = '検証中にエラーが発生しました';
+
+    if (error instanceof Error) {
+      if (error.message.includes('unsupported image format') ||
+          error.message.includes('Input file is missing')) {
+        errorMessage = 'サポートされていない画像形式です。PNG, JPEG, WebP形式の画像を使用してください。';
+      } else if (error.message.includes('Input buffer contains unsupported image format')) {
+        errorMessage = '画像ファイルが破損しているか、サポートされていない形式です。';
+      } else {
+        errorMessage = `検証中にエラーが発生しました: ${error.message}`;
+      }
+    }
+
     return NextResponse.json(
-      { success: false, error: '検証中にエラーが発生しました' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
