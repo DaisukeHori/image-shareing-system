@@ -174,19 +174,31 @@ export async function sendApprovalRequestEmail(
         </div>
 
         <div style="margin: 30px 0; text-align: center;">
-          <table role="presentation" style="margin: 0 auto;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
             <tr>
               <td style="padding-right: 10px;">
-                <a href="${approveUrl}"
-                   style="display: inline-block; padding: 14px 28px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                  ✓ 承認する
-                </a>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="background-color: #22c55e; border-radius: 8px;">
+                      <a href="${approveUrl}" target="_blank"
+                         style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
+                        ✓ 承認する
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </td>
               <td style="padding-left: 10px;">
-                <a href="${rejectUrl}"
-                   style="display: inline-block; padding: 14px 28px; background-color: #ef4444; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                  ✕ 却下する
-                </a>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="background-color: #ef4444; border-radius: 8px;">
+                      <a href="${rejectUrl}" target="_blank"
+                         style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
+                        ✕ 却下する
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
@@ -290,11 +302,11 @@ export async function sendRequestConfirmationEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        <table role="presentation" style="margin: 0 auto;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
           <tr>
-            <td>
-              <a href="${appUrl}?tab=requests"
-                 style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+            <td style="background-color: #2563eb; border-radius: 8px;">
+              <a href="${appUrl}?tab=requests" target="_blank"
+                 style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
                 申請履歴を確認する
               </a>
             </td>
@@ -384,11 +396,11 @@ export async function sendApprovalResultEmail(
         isApproved
           ? `
         <div style="margin: 30px 0; text-align: center;">
-          <table role="presentation" style="margin: 0 auto;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
             <tr>
-              <td>
-                <a href="${appUrl}?tab=requests"
-                   style="display: inline-block; padding: 14px 28px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+              <td style="background-color: #22c55e; border-radius: 8px;">
+                <a href="${appUrl}?tab=requests" target="_blank"
+                   style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
                   画像をダウンロード
                 </a>
               </td>
@@ -494,11 +506,11 @@ export async function sendDeletionReminderEmail(
       </div>
 
       <div style="margin: 30px 0; text-align: center;">
-        <table role="presentation" style="margin: 0 auto;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
           <tr>
-            <td>
-              <a href="${confirmUrl}"
-                 style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+            <td style="background-color: #2563eb; border-radius: 8px;">
+              <a href="${confirmUrl}" target="_blank"
+                 style="display: block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none;">
                 削除を確認する（${roleLabel}）
               </a>
             </td>

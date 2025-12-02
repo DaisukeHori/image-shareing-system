@@ -397,7 +397,7 @@ export default function RequestsPage() {
               <textarea
                 value={approverComment}
                 onChange={(e) => setApproverComment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
                 rows={3}
                 placeholder="承認に際して伝えたいことがあれば入力してください"
                 maxLength={500}
@@ -447,7 +447,7 @@ export default function RequestsPage() {
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 text-gray-900"
                 rows={3}
                 placeholder="却下理由を入力してください"
               />
@@ -459,7 +459,7 @@ export default function RequestsPage() {
               <textarea
                 value={approverComment}
                 onChange={(e) => setApproverComment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 text-gray-900"
                 rows={2}
                 placeholder="却下理由以外に伝えたいことがあれば入力してください"
                 maxLength={500}
