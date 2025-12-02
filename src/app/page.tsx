@@ -23,6 +23,9 @@ interface ApprovalRequest {
   purpose: string;
   created_at: string;
   expires_at: string | null;
+  approver_comment: string | null;
+  rejection_reason: string | null;
+  approver: { id: string; name: string } | null;
 }
 
 const statusLabels: Record<string, { text: string; class: string }> = {
@@ -70,6 +73,9 @@ export default function Home() {
   // 申請キャンセル
   const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  // ダウンロード確認モーダル
+  const [downloadModal, setDownloadModal] = useState<ApprovalRequest | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   // プレビュー用のナビゲーション関数
   const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
@@ -315,19 +321,46 @@ export default function Home() {
   }
 
   async function handleDownload(requestId: string) {
+    setDownloading(true);
     try {
       const res = await fetch(`/api/download/${requestId}`);
-      const data = await res.json();
 
-      if (data.success && data.downloadUrl) {
-        window.open(data.downloadUrl, '_blank');
-        fetchData();
-      } else {
+      if (!res.ok) {
+        // エラーの場合はJSONとしてパース
+        const data = await res.json();
         alert(data.error || 'ダウンロードに失敗しました');
+        return;
       }
+
+      // Content-Dispositionヘッダーからファイル名を取得
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = 'download';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) {
+          filename = decodeURIComponent(match[1]);
+        }
+      }
+
+      // ファイルをダウンロード
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // データを更新してモーダルを閉じる
+      fetchData();
+      setDownloadModal(null);
     } catch (error) {
       console.error('Failed to download:', error);
       alert('ダウンロードに失敗しました');
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -613,11 +646,16 @@ export default function Home() {
                       </div>
                       {request.status === 'approved' && (
                         <button
-                          onClick={() => handleDownload(request.id)}
+                          onClick={() => setDownloadModal(request)}
                           className="w-full mt-3 px-3 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
                         >
                           ダウンロード
                         </button>
+                      )}
+                      {request.status === 'rejected' && request.rejection_reason && (
+                        <p className="mt-2 text-xs text-red-600">
+                          却下理由: {request.rejection_reason}
+                        </p>
                       )}
                       {request.status === 'pending' && (
                         <button
@@ -689,11 +727,16 @@ export default function Home() {
                           <td className="px-4 lg:px-6 py-4">
                             {request.status === 'approved' && (
                               <button
-                                onClick={() => handleDownload(request.id)}
+                                onClick={() => setDownloadModal(request)}
                                 className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
                               >
                                 ダウンロード
                               </button>
+                            )}
+                            {request.status === 'rejected' && (
+                              <span className="text-xs text-red-600">
+                                {request.rejection_reason ? `却下: ${request.rejection_reason.substring(0, 20)}...` : '却下されました'}
+                              </span>
                             )}
                             {request.status === 'pending' && (
                               <button
@@ -1161,6 +1204,91 @@ export default function Home() {
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm disabled:opacity-50"
               >
                 {cancelling ? 'キャンセル中...' : 'キャンセルする'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ダウンロード確認モーダル */}
+      {downloadModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">ダウンロード確認</h3>
+              <button
+                onClick={() => setDownloadModal(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 画像プレビュー */}
+            <div className="mb-4">
+              <img
+                src={getImageUrl(downloadModal.image.storage_path)}
+                alt={downloadModal.image.original_filename}
+                className="w-full max-h-48 object-contain bg-gray-100 rounded"
+              />
+              <p className="text-sm text-gray-500 mt-2 truncate">
+                {downloadModal.image.original_filename}
+              </p>
+            </div>
+
+            {/* 申請情報 */}
+            <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-500">申請番号:</span>
+                <span className="text-gray-900 font-medium">{downloadModal.request_number}</span>
+              </div>
+              {downloadModal.approver && (
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-500">承認者:</span>
+                  <span className="text-gray-900">{downloadModal.approver.name}</span>
+                </div>
+              )}
+              {downloadModal.expires_at && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">ダウンロード期限:</span>
+                  <span className="text-gray-900">{formatDate(downloadModal.expires_at)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 承認者コメント */}
+            {downloadModal.approver_comment && (
+              <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-xs font-medium text-green-700 mb-1">承認者からのコメント:</p>
+                <p className="text-sm text-green-900">{downloadModal.approver_comment}</p>
+              </div>
+            )}
+
+            {/* 注意事項 */}
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs text-blue-700">
+                ※ダウンロードは<strong>1回のみ</strong>可能です。<br />
+                ※ダウンロードした画像には電子透かしが埋め込まれます。<br />
+                ※掲載終了日を過ぎたら必ず削除してください。
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDownloadModal(null)}
+                disabled={downloading}
+                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50"
+              >
+                閉じる
+              </button>
+              <button
+                onClick={() => handleDownload(downloadModal.id)}
+                disabled={downloading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50"
+              >
+                {downloading ? 'ダウンロード中...' : 'ダウンロード'}
               </button>
             </div>
           </div>
