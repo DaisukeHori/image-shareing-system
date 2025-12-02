@@ -11,6 +11,8 @@ interface Image {
   storage_path: string;
   folder: { id: string; name: string } | null;
   permission_level: 'view' | 'download' | 'edit';
+  file_type?: 'image' | 'video';
+  mime_type?: string;
 }
 
 interface ApprovalRequest {
@@ -204,6 +206,10 @@ export default function Home() {
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
   }
 
+  function isVideo(image: Image) {
+    return image.file_type === 'video' || image.mime_type?.startsWith('video/');
+  }
+
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleString('ja-JP', {
       month: 'numeric',
@@ -336,11 +342,30 @@ export default function Home() {
                       className="aspect-square bg-gray-100 relative cursor-pointer"
                       onClick={() => setPreviewImage(image)}
                     >
-                      <img
-                        src={getImageUrl(image.storage_path)}
-                        alt={image.original_filename}
-                        className="w-full h-full object-cover"
-                      />
+                      {isVideo(image) ? (
+                        <>
+                          <video
+                            src={getImageUrl(image.storage_path)}
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                          {/* 動画アイコン */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
+                              <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <img
+                          src={getImageUrl(image.storage_path)}
+                          alt={image.original_filename}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       {/* 拡大アイコン（ホバー時のみ表示） */}
                       <div className="absolute inset-0 bg-black/0 hover:bg-black/20 group-hover:bg-black/20 flex items-center justify-center transition-all pointer-events-none">
                         <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -541,11 +566,19 @@ export default function Home() {
               {selectedImage.permission_level === 'view' ? '画像の利用申請' : '画像のダウンロード'}
             </h2>
             <div className="mb-4">
-              <img
-                src={getImageUrl(selectedImage.storage_path)}
-                alt={selectedImage.original_filename}
-                className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
-              />
+              {isVideo(selectedImage) ? (
+                <video
+                  src={getImageUrl(selectedImage.storage_path)}
+                  controls
+                  className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
+                />
+              ) : (
+                <img
+                  src={getImageUrl(selectedImage.storage_path)}
+                  alt={selectedImage.original_filename}
+                  className="w-full max-h-48 sm:max-h-64 object-contain bg-gray-100 rounded"
+                />
+              )}
               <p className="text-sm text-gray-500 mt-2 truncate">
                 {selectedImage.original_filename}
               </p>
@@ -677,11 +710,20 @@ export default function Home() {
             className="max-w-full max-h-full flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={getImageUrl(previewImage.storage_path)}
-              alt={previewImage.original_filename}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg"
-            />
+            {isVideo(previewImage) ? (
+              <video
+                src={getImageUrl(previewImage.storage_path)}
+                controls
+                autoPlay
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            ) : (
+              <img
+                src={getImageUrl(previewImage.storage_path)}
+                alt={previewImage.original_filename}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            )}
             <div className="mt-4 flex flex-col items-center gap-2">
               <p className="text-white text-sm text-center">
                 {previewImage.original_filename}

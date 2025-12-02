@@ -40,6 +40,8 @@ export interface FolderWithChildren extends Folder {
   children?: FolderWithChildren[];
 }
 
+export type FileType = 'image' | 'video';
+
 export interface Image {
   id: string;
   folder_id: string | null;
@@ -50,6 +52,8 @@ export interface Image {
   mime_type: string | null;
   width: number | null;
   height: number | null;
+  file_type: FileType;
+  duration: number | null; // 動画の長さ（秒）
   created_at: string;
   updated_at: string;
 }
