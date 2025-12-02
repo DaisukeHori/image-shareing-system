@@ -28,9 +28,9 @@ export async function GET() {
 
     if (error) throw error;
 
-    // CSV形式に変換
+    // CSV形式に変換（データがない場合はヘッダーのみのテンプレートを出力）
     const csvHeader = '所属名,所属長メールアドレス';
-    const csvRows = data.map((dept: { name: string; manager: { email: string } | null }) =>
+    const csvRows = (data || []).map((dept: { name: string; manager: { email: string } | null }) =>
       `"${dept.name}","${dept.manager?.email || ''}"`
     );
     const csv = [csvHeader, ...csvRows].join('\n');

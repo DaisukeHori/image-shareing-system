@@ -31,9 +31,9 @@ export async function GET() {
 
     if (error) throw error;
 
-    // CSV形式に変換
+    // CSV形式に変換（データがない場合はヘッダーのみのテンプレートを出力）
     const csvHeader = 'メールアドレス,名前,所属名,権限,社長,有効';
-    const csvRows = data.map((user: {
+    const csvRows = (data || []).map((user: {
       email: string;
       name: string;
       role: string;
