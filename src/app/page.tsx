@@ -100,8 +100,8 @@ export default function Home() {
   // 掲載終了確認
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
   // 並び替え
-  const [sortKey, setSortKey] = useState<SortKey>('created_at');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>('filename');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // ソート済み画像（useMemoで最適化）
   const sortedImages = useMemo(() => {
