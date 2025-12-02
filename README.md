@@ -405,7 +405,7 @@ Windowsの場合やopensslがない場合は、以下のWebサイトで生成で
 ```json
 {
   "crons": [{
-    "path": "/api/cron/deletion-reminder",
+    "path": "/api/cron/deletion-reminders",
     "schedule": "0 5 * * *"
   }]
 }
@@ -422,7 +422,7 @@ Windowsの場合やopensslがない場合は、以下のWebサイトで生成で
 Cronジョブを手動でテストする場合：
 
 ```bash
-curl -X GET "https://your-app.vercel.app/api/cron/deletion-reminder" \
+curl -X GET "https://your-app.vercel.app/api/cron/deletion-reminders" \
   -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 
