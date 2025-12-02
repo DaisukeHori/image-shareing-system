@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 // 権限レベル: view < download < edit
 type PermissionLevel = 'view' | 'download' | 'edit';
+type DefaultPermission = 'none' | 'view' | 'download' | 'edit';
 
 // 画像データの型定義
 interface ImageData {
@@ -110,10 +111,26 @@ export async function GET(request: NextRequest) {
       folderPermData = folderPermDataWithLevel;
     }
 
-    // フォルダIDと権限レベルのマップ
+    // フォルダIDと権限レベルのマップ（明示的なユーザー権限）
     const folderPermMap = new Map<string, PermissionLevel>();
     (folderPermData || []).forEach((fp: { folder_id: string; level: PermissionLevel }) => {
       folderPermMap.set(fp.folder_id, fp.level || 'view');
+    });
+
+    // 3. 全フォルダを取得してデフォルト権限をチェック
+    const { data: allFolders, error: allFoldersError } = await supabase
+      .from('folders')
+      .select('id, default_permission');
+
+    if (allFoldersError) throw allFoldersError;
+
+    // デフォルト権限がnone以外のフォルダを権限マップに追加
+    (allFolders || []).forEach((f: { id: string; default_permission?: DefaultPermission }) => {
+      const defaultPerm = f.default_permission || 'none';
+      if (defaultPerm !== 'none' && !folderPermMap.has(f.id)) {
+        // 明示的な権限がない場合、デフォルト権限を使用
+        folderPermMap.set(f.id, defaultPerm as PermissionLevel);
+      }
     });
 
     const permittedFolderIds = Array.from(folderPermMap.keys());
