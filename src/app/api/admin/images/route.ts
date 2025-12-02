@@ -32,6 +32,9 @@ export async function GET(request: NextRequest) {
 
     if (folderId) {
       query = query.eq('folder_id', folderId);
+    } else {
+      // ルートフォルダの場合、folder_idがnullの画像のみ表示
+      query = query.is('folder_id', null);
     }
 
     const { data, error } = await query;
