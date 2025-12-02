@@ -76,6 +76,8 @@ export interface ApprovalRequest {
   purpose_other: string | null;
   usage_end_date: string | null;
   agreed_to_terms: boolean;
+  requester_comment: string | null;
+  approver_comment: string | null;
   status: ApprovalStatus;
   approved_by: string | null;
   approved_at: string | null;

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { image_id, purpose_type, purpose_other, usage_end_date, agreed_to_terms } = body;
+    const { image_id, purpose_type, purpose_other, usage_end_date, requester_comment, agreed_to_terms } = body;
 
     // バリデーション
     if (!image_id || !purpose_type || !usage_end_date) {
@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
         purpose_type,
         purpose_other: purpose_type === 'other' ? purpose_other : null,
         usage_end_date,
+        requester_comment: requester_comment?.trim() || null,
         agreed_to_terms: true,
       })
       .select(`

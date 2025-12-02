@@ -53,6 +53,7 @@ export default function Home() {
   const [purposeType, setPurposeType] = useState<PurposeType | ''>('');
   const [purposeOther, setPurposeOther] = useState('');
   const [usageEndDate, setUsageEndDate] = useState('');
+  const [requesterComment, setRequesterComment] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -166,6 +167,7 @@ export default function Home() {
           purpose_type: purposeType,
           purpose_other: purposeType === 'other' ? purposeOther.trim() : null,
           usage_end_date: usageEndDate,
+          requester_comment: requesterComment.trim() || null,
           agreed_to_terms: true,
         }),
       });
@@ -177,6 +179,7 @@ export default function Home() {
         setPurposeType('');
         setPurposeOther('');
         setUsageEndDate('');
+        setRequesterComment('');
         setAgreedToTerms(false);
         setShowConsentForm(false);
         fetchData();
@@ -199,6 +202,7 @@ export default function Home() {
     setPurposeType('');
     setPurposeOther('');
     setUsageEndDate('');
+    setRequesterComment('');
     setAgreedToTerms(false);
     setShowConsentForm(false);
   }
@@ -714,6 +718,21 @@ export default function Home() {
                   <p className="text-xs text-gray-500 mt-1">
                     1年以内の日付を選択してください。期限後は削除確認が必要です。
                   </p>
+                </div>
+
+                {/* 承認者へのコメント */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    承認者へのコメント（任意）
+                  </label>
+                  <textarea
+                    value={requesterComment}
+                    onChange={(e) => setRequesterComment(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+                    placeholder="承認者へ伝えたいことがあれば入力してください"
+                    maxLength={500}
+                  />
                 </div>
 
                 {/* 同意書セクション */}

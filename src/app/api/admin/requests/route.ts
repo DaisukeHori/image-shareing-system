@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { requestId, action, rejectionReason } = body;
+    const { requestId, action, rejectionReason, approverComment } = body;
 
     if (!requestId || !action) {
       return NextResponse.json(
@@ -139,12 +139,14 @@ export async function POST(request: NextRequest) {
           approved_by: session.user.id,
           approved_at: new Date().toISOString(),
           expires_at: expiresAt,
+          approver_comment: approverComment?.trim() || null,
         }
       : {
           status: 'rejected' as const,
           rejected_by: session.user.id,
           rejected_at: new Date().toISOString(),
           rejection_reason: rejectionReason,
+          approver_comment: approverComment?.trim() || null,
         };
 
     const { error: updateError } = await supabase
