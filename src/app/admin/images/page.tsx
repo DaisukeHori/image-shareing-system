@@ -6,6 +6,7 @@ import HelpTip from '@/components/HelpTip';
 interface Folder {
   id: string;
   name: string;
+  parent_id: string | null;
 }
 
 interface User {
@@ -34,28 +35,74 @@ interface Image {
 export default function ImagesPage() {
   const [images, setImages] = useState<Image[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [allFolders, setAllFolders] = useState<Folder[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
-  const [selectedFolder, setSelectedFolder] = useState<string>('');
-  const [selectedImage, setSelectedImage] = useState<Image | null>(null);
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
   const [showFolderPermissionModal, setShowFolderPermissionModal] = useState(false);
-  const [selectedFolderForPermission, setSelectedFolderForPermission] = useState<Folder | null>(null);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [saving, setSaving] = useState(false);
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
-  }, [selectedFolder]);
+  }, [currentFolderId]);
 
-  // ドラッグ＆ドロップハンドラー
+  function buildBreadcrumbs(folderId: string | null, allFoldersList: Folder[]): Folder[] {
+    if (!folderId) return [];
+    const crumbs: Folder[] = [];
+    let current = allFoldersList.find(f => f.id === folderId);
+    while (current) {
+      crumbs.unshift(current);
+      current = current.parent_id ? allFoldersList.find(f => f.id === current!.parent_id) : undefined;
+    }
+    return crumbs;
+  }
+
+  async function fetchData() {
+    try {
+      const url = currentFolderId
+        ? `/api/admin/images?folder_id=${currentFolderId}`
+        : '/api/admin/images';
+
+      const [imagesRes, foldersRes, usersRes] = await Promise.all([
+        fetch(url),
+        fetch('/api/admin/folders'),
+        fetch('/api/admin/users'),
+      ]);
+
+      const imagesData = await imagesRes.json();
+      const foldersData = await foldersRes.json();
+      const usersData = await usersRes.json();
+
+      if (imagesData.success) setImages(imagesData.data);
+      if (foldersData.success) {
+        setAllFolders(foldersData.flat);
+        const childFolders = foldersData.flat.filter(
+          (f: Folder) => f.parent_id === currentFolderId
+        );
+        setFolders(childFolders);
+        setBreadcrumbs(buildBreadcrumbs(currentFolderId, foldersData.flat));
+      }
+      if (usersData.success) setUsers(usersData.data);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -70,7 +117,6 @@ export default function ImagesPage() {
   function handleDragLeave(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    // 子要素からのleaveイベントを無視
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setIsDragOver(false);
   }
@@ -86,7 +132,6 @@ export default function ImagesPage() {
     const files: File[] = [];
     const folderFiles: { folderName: string; file: File }[] = [];
 
-    // DataTransferItemsを処理
     if (items && items.length > 0) {
       const entries: FileSystemEntry[] = [];
 
@@ -100,7 +145,6 @@ export default function ImagesPage() {
         }
       }
 
-      // エントリを再帰的に処理
       for (const entry of entries) {
         if (entry.isFile) {
           const file = await getFileFromEntry(entry as FileSystemFileEntry);
@@ -114,17 +158,13 @@ export default function ImagesPage() {
       }
     }
 
-    // フォルダがドロップされた場合
     if (folderFiles.length > 0) {
       await uploadFolderFiles(folderFiles);
-    }
-    // 画像ファイルのみの場合
-    else if (files.length > 0) {
+    } else if (files.length > 0) {
       await uploadFiles(files);
     }
   }
 
-  // FileSystemFileEntryからFileを取得
   function getFileFromEntry(entry: FileSystemFileEntry): Promise<File | null> {
     return new Promise((resolve) => {
       entry.file(
@@ -134,7 +174,6 @@ export default function ImagesPage() {
     });
   }
 
-  // ディレクトリエントリを再帰的に読み取り
   async function readDirectoryEntry(
     dirEntry: FileSystemDirectoryEntry,
     folderName: string
@@ -164,7 +203,6 @@ export default function ImagesPage() {
     return results;
   }
 
-  // 複数ファイルをアップロード
   async function uploadFiles(files: File[]) {
     setUploading(true);
     setUploadProgress({ current: 0, total: files.length });
@@ -176,8 +214,8 @@ export default function ImagesPage() {
 
         const formData = new FormData();
         formData.append('file', file);
-        if (selectedFolder) {
-          formData.append('folder_id', selectedFolder);
+        if (currentFolderId) {
+          formData.append('folder_id', currentFolderId);
         }
 
         const res = await fetch('/api/admin/images', {
@@ -200,15 +238,13 @@ export default function ImagesPage() {
     }
   }
 
-  // フォルダファイルをアップロード（フォルダを作成してからアップロード）
   async function uploadFolderFiles(folderFiles: { folderName: string; file: File }[]) {
-    // フォルダ名でグループ化
     const folderGroups = new Map<string, File[]>();
-    for (const { folderName, file } of folderFiles) {
-      if (!folderGroups.has(folderName)) {
-        folderGroups.set(folderName, []);
+    for (const { folderName: fName, file } of folderFiles) {
+      if (!folderGroups.has(fName)) {
+        folderGroups.set(fName, []);
       }
-      folderGroups.get(folderName)!.push(file);
+      folderGroups.get(fName)!.push(file);
     }
 
     setUploading(true);
@@ -217,16 +253,15 @@ export default function ImagesPage() {
     setUploadProgress({ current: 0, total: totalFiles });
 
     try {
-      for (const [folderName, files] of folderGroups) {
-        // フォルダを作成
-        let targetFolderId = selectedFolder;
+      for (const [name, files] of folderGroups) {
+        let targetFolderId = currentFolderId;
         try {
           const folderRes = await fetch('/api/admin/folders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              name: folderName,
-              parent_id: selectedFolder || null,
+              name,
+              parent_id: currentFolderId || null,
             }),
           });
 
@@ -238,7 +273,6 @@ export default function ImagesPage() {
           console.error('Failed to create folder:', error);
         }
 
-        // ファイルをアップロード
         for (const file of files) {
           uploadedCount++;
           setUploadProgress({ current: uploadedCount, total: totalFiles });
@@ -270,152 +304,101 @@ export default function ImagesPage() {
     }
   }
 
-  async function fetchData() {
-    try {
-      const url = selectedFolder
-        ? `/api/admin/images?folder_id=${selectedFolder}`
-        : '/api/admin/images';
-
-      const [imagesRes, foldersRes, usersRes] = await Promise.all([
-        fetch(url),
-        fetch('/api/admin/folders'),
-        fetch('/api/admin/users'),
-      ]);
-
-      const imagesData = await imagesRes.json();
-      const foldersData = await foldersRes.json();
-      const usersData = await usersRes.json();
-
-      if (imagesData.success) setImages(imagesData.data);
-      if (foldersData.success) setFolders(foldersData.flat);
-      if (usersData.success) setUsers(usersData.data);
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    setUploading(true);
-    setUploadProgress({ current: 0, total: files.length });
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setUploadProgress({ current: i + 1, total: files.length });
-
-        const formData = new FormData();
-        formData.append('file', file);
-        if (selectedFolder) {
-          formData.append('folder_id', selectedFolder);
-        }
-
-        const res = await fetch('/api/admin/images', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (!data.success) {
-          console.error(`${file.name}: ${data.error}`);
-        }
-      }
-      fetchData();
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('アップロードに失敗しました');
-    } finally {
-      setUploading(false);
-      setUploadProgress({ current: 0, total: 0 });
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+    await uploadFiles(Array.from(files));
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function handleFolderUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // フォルダ名を取得
     const firstFile = files[0];
     const pathParts = firstFile.webkitRelativePath.split('/');
-    const folderName = pathParts[0];
+    const fName = pathParts[0];
 
-    // フォルダを作成または取得
-    let targetFolderId = selectedFolder;
+    const folderFilesList: { folderName: string; file: File }[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        folderFilesList.push({ folderName: fName, file });
+      }
+    }
+
+    if (folderFilesList.length > 0) {
+      await uploadFolderFiles(folderFilesList);
+    }
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  }
+
+  async function handleCreateFolder() {
+    if (!folderName.trim()) return;
+    setSaving(true);
 
     try {
-      // 新しいフォルダを作成
-      const folderRes = await fetch('/api/admin/folders', {
+      const res = await fetch('/api/admin/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: folderName,
-          parent_id: selectedFolder || null,
+          parent_id: currentFolderId || null,
         }),
       });
 
-      const folderData = await folderRes.json();
-      if (folderData.success) {
-        targetFolderId = folderData.data.id;
+      const data = await res.json();
+      if (data.success) {
+        setShowFolderModal(false);
+        setFolderName('');
+        fetchData();
+      } else {
+        alert(data.error || 'エラーが発生しました');
       }
     } catch (error) {
       console.error('Failed to create folder:', error);
-    }
-
-    setUploading(true);
-    setUploadProgress({ current: 0, total: files.length });
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        // 画像ファイルのみ処理
-        if (!file.type.startsWith('image/')) continue;
-
-        setUploadProgress({ current: i + 1, total: files.length });
-
-        const formData = new FormData();
-        formData.append('file', file);
-        if (targetFolderId) {
-          formData.append('folder_id', targetFolderId);
-        }
-
-        const res = await fetch('/api/admin/images', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (!data.success) {
-          console.error(`${file.name}: ${data.error}`);
-        }
-      }
-      fetchData();
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('アップロードに失敗しました');
+      alert('フォルダの作成に失敗しました');
     } finally {
-      setUploading(false);
-      setUploadProgress({ current: 0, total: 0 });
-      if (folderInputRef.current) {
-        folderInputRef.current.value = '';
-      }
+      setSaving(false);
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('この画像を削除しますか？')) return;
+  async function handleEditFolder() {
+    if (!editingFolder || !folderName.trim()) return;
+    setSaving(true);
 
     try {
-      const res = await fetch(`/api/admin/images/${id}`, {
-        method: 'DELETE',
+      const res = await fetch(`/api/admin/folders/${editingFolder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: folderName,
+          parent_id: editingFolder.parent_id,
+        }),
       });
 
+      const data = await res.json();
+      if (data.success) {
+        setShowFolderModal(false);
+        setFolderName('');
+        setEditingFolder(null);
+        fetchData();
+      } else {
+        alert(data.error || 'エラーが発生しました');
+      }
+    } catch (error) {
+      console.error('Failed to edit folder:', error);
+      alert('フォルダの編集に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteFolder(id: string) {
+    if (!confirm('このフォルダと中の画像をすべて削除しますか？')) return;
+
+    try {
+      const res = await fetch(`/api/admin/folders/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         fetchData();
@@ -423,165 +406,102 @@ export default function ImagesPage() {
         alert(data.error || 'エラーが発生しました');
       }
     } catch (error) {
-      console.error('Failed to delete:', error);
-      alert('削除に失敗しました');
+      console.error('Failed to delete folder:', error);
+      alert('フォルダの削除に失敗しました');
     }
   }
 
-  async function handleBulkDelete() {
-    if (selectedImages.length === 0) return;
-    if (!confirm(`選択した${selectedImages.length}件の画像を削除しますか？`)) return;
+  async function handleDeleteImage(id: string) {
+    if (!confirm('この画像を削除しますか？')) return;
 
     try {
-      for (const id of selectedImages) {
-        await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
-      }
-      setSelectedImages([]);
-      setIsMultiSelectMode(false);
-      fetchData();
-    } catch (error) {
-      console.error('Failed to delete:', error);
-      alert('削除に失敗しました');
-    }
-  }
-
-  async function openPermissionModal(image: Image) {
-    try {
-      const res = await fetch(`/api/admin/images/${image.id}`);
+      const res = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        setSelectedImage(data.data);
-        setSelectedUserIds(
-          data.data.permissions?.map((p: Permission) => p.user_id) || []
-        );
-        setShowPermissionModal(true);
+        fetchData();
+      } else {
+        alert(data.error || 'エラーが発生しました');
       }
     } catch (error) {
-      console.error('Failed to fetch image details:', error);
+      console.error('Failed to delete image:', error);
+      alert('画像の削除に失敗しました');
     }
   }
 
-  async function openBulkPermissionModal() {
-    if (selectedImages.length === 0) return;
-    setSelectedUserIds([]);
+  function openPermissionModal(image: Image) {
+    setSelectedImage(image);
+    setSelectedUserIds(image.permissions?.map(p => p.user_id) || []);
     setShowPermissionModal(true);
   }
 
-  async function openFolderPermissionModal(folder: Folder) {
-    try {
-      const res = await fetch(`/api/admin/folders/${folder.id}/permissions`);
-      const data = await res.json();
-      if (data.success) {
-        setSelectedFolderForPermission(folder);
-        setSelectedUserIds(
-          data.data?.map((p: { user_id: string }) => p.user_id) || []
-        );
-        setShowFolderPermissionModal(true);
-      }
-    } catch (error) {
-      console.error('Failed to fetch folder permissions:', error);
-    }
+  function openFolderPermissionModal(folder: Folder) {
+    setEditingFolder(folder);
+    setSelectedUserIds([]);
+    setShowFolderPermissionModal(true);
+    fetch(`/api/admin/folders/${folder.id}/permissions`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setSelectedUserIds(data.data.map((p: { user_id: string }) => p.user_id));
+        }
+      });
   }
 
   async function handleSavePermissions() {
+    if (!selectedImage) return;
     setSaving(true);
 
     try {
-      if (selectedImages.length > 0) {
-        // 複数画像の権限設定
-        for (const imageId of selectedImages) {
-          await fetch(`/api/admin/images/${imageId}/permissions`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_ids: selectedUserIds }),
-          });
-        }
-        setSelectedImages([]);
-        setIsMultiSelectMode(false);
-      } else if (selectedImage) {
-        // 単一画像の権限設定
-        const res = await fetch(
-          `/api/admin/images/${selectedImage.id}/permissions`,
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_ids: selectedUserIds }),
-          }
-        );
+      const res = await fetch(`/api/admin/images/${selectedImage.id}/permissions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids: selectedUserIds }),
+      });
 
-        const data = await res.json();
-        if (!data.success) {
-          alert(data.error || 'エラーが発生しました');
-          return;
-        }
+      const data = await res.json();
+      if (data.success) {
+        setShowPermissionModal(false);
+        setSelectedImage(null);
+        fetchData();
+      } else {
+        alert(data.error || 'エラーが発生しました');
       }
-
-      setShowPermissionModal(false);
-      setSelectedImage(null);
-      fetchData();
     } catch (error) {
       console.error('Failed to save permissions:', error);
-      alert('保存に失敗しました');
+      alert('権限の保存に失敗しました');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleSaveFolderPermissions() {
-    if (!selectedFolderForPermission) return;
+    if (!editingFolder) return;
     setSaving(true);
 
     try {
-      const res = await fetch(
-        `/api/admin/folders/${selectedFolderForPermission.id}/permissions`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_ids: selectedUserIds }),
-        }
-      );
+      const res = await fetch(`/api/admin/folders/${editingFolder.id}/permissions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids: selectedUserIds }),
+      });
 
       const data = await res.json();
       if (data.success) {
         setShowFolderPermissionModal(false);
-        setSelectedFolderForPermission(null);
+        setEditingFolder(null);
       } else {
         alert(data.error || 'エラーが発生しました');
       }
     } catch (error) {
       console.error('Failed to save folder permissions:', error);
-      alert('保存に失敗しました');
+      alert('権限の保存に失敗しました');
     } finally {
       setSaving(false);
     }
   }
 
-  function toggleUser(userId: string) {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
-    );
-  }
-
-  function toggleImageSelection(imageId: string) {
-    setSelectedImages((prev) =>
-      prev.includes(imageId)
-        ? prev.filter((id) => id !== imageId)
-        : [...prev, imageId]
-    );
-  }
-
-  function selectAllImages() {
-    if (selectedImages.length === images.length) {
-      setSelectedImages([]);
-    } else {
-      setSelectedImages(images.map((img) => img.id));
-    }
-  }
-
   function getImageUrl(storagePath: string) {
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${storagePath}`;
   }
 
   if (loading) {
@@ -600,7 +520,6 @@ export default function ImagesPage() {
       onDrop={handleDrop}
       className="relative min-h-[calc(100vh-200px)]"
     >
-      {/* ドラッグオーバーレイ */}
       {isDragOver && (
         <div className="absolute inset-0 bg-blue-500 bg-opacity-20 border-4 border-dashed border-blue-500 rounded-lg z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-white rounded-lg p-8 shadow-lg text-center">
@@ -608,73 +527,85 @@ export default function ImagesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <p className="text-xl font-bold text-gray-900">ドロップしてアップロード</p>
-            <p className="text-sm text-gray-500 mt-2">画像ファイルまたはフォルダをドロップできます</p>
+            <p className="text-sm text-gray-500 mt-2">画像ファイルまたはフォルダをドロップ</p>
           </div>
         </div>
       )}
 
-      {/* ヘッダー部分 */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">画像管理</h1>
-          <HelpTip content="画像をアップロードし、ユーザーごとにアクセス権限を設定します。フォルダごとの一括アップロードや権限設定も可能です。" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ファイル管理</h1>
+          <HelpTip content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロードできます。" />
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-          <select
-            value={selectedFolder}
-            onChange={(e) => setSelectedFolder(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setEditingFolder(null); setFolderName(''); setShowFolderModal(true); }}
+            className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
           >
-            <option value="">すべてのフォルダ</option>
-            {folders.map((folder) => (
-              <option key={folder.id} value={folder.id}>
-                {folder.name}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex gap-2">
-            <label className="flex-1 sm:flex-none px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer text-sm text-center whitespace-nowrap">
-              {uploading ? `アップロード中 ${uploadProgress.current}/${uploadProgress.total}` : '画像アップロード（複数可）'}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={handleUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-            <label className="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer text-sm text-center whitespace-nowrap">
-              {uploading ? '...' : 'フォルダごと'}
-              <input
-                ref={folderInputRef}
-                type="file"
-                accept="image/*"
-                /* @ts-expect-error webkitdirectory is not in types */
-                webkitdirectory="true"
-                onChange={handleFolderUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-          </div>
+            📁 新規フォルダ
+          </button>
+          <label className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-sm">
+            {uploading ? `${uploadProgress.current}/${uploadProgress.total}` : '📷 画像追加'}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={handleFileUpload}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+          <label className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer text-sm">
+            📂 フォルダごと
+            <input
+              ref={folderInputRef}
+              type="file"
+              accept="image/*"
+              /* @ts-expect-error webkitdirectory is not in types */
+              webkitdirectory="true"
+              onChange={handleFolderUpload}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+          <button
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+          >
+            {viewMode === 'grid' ? '📋 リスト' : '📊 グリッド'}
+          </button>
         </div>
       </div>
 
-      {/* フォルダ権限設定ボタン */}
-      {selectedFolder && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              フォルダ: {folders.find((f) => f.id === selectedFolder)?.name}
-            </span>
-            <HelpTip content="フォルダ権限を設定すると、そのフォルダ内のすべての画像に自動的にアクセス権限が付与されます。個別の画像権限設定は不要になります。" />
-          </div>
+      <div className="flex items-center gap-2 mb-4 text-sm overflow-x-auto pb-2">
+        <button
+          onClick={() => setCurrentFolderId(null)}
+          className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap ${!currentFolderId ? 'font-bold text-blue-600' : 'text-gray-600'}`}
+        >
+          🏠 ルート
+        </button>
+        {breadcrumbs.map((folder, index) => (
+          <span key={folder.id} className="flex items-center gap-2">
+            <span className="text-gray-400">/</span>
+            <button
+              onClick={() => setCurrentFolderId(folder.id)}
+              className={`px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap ${index === breadcrumbs.length - 1 ? 'font-bold text-blue-600' : 'text-gray-600'}`}
+            >
+              📁 {folder.name}
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {currentFolderId && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-gray-600">
+            📁 {breadcrumbs[breadcrumbs.length - 1]?.name}
+          </span>
           <button
             onClick={() => {
-              const folder = folders.find((f) => f.id === selectedFolder);
+              const folder = allFolders.find(f => f.id === currentFolderId);
               if (folder) openFolderPermissionModal(folder);
             }}
             className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
@@ -684,228 +615,302 @@ export default function ImagesPage() {
         </div>
       )}
 
-      {/* 複数選択モード */}
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
-        <button
-          onClick={() => {
-            setIsMultiSelectMode(!isMultiSelectMode);
-            setSelectedImages([]);
-          }}
-          className={`px-3 py-1.5 rounded text-sm ${
-            isMultiSelectMode
-              ? 'bg-gray-800 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {isMultiSelectMode ? '選択モード解除' : '複数選択'}
-        </button>
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {folders.map((folder) => (
+            <div
+              key={`folder-${folder.id}`}
+              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer group"
+            >
+              <div
+                onClick={() => setCurrentFolderId(folder.id)}
+                className="p-4 text-center"
+              >
+                <div className="text-5xl mb-2">📁</div>
+                <p className="text-sm font-medium text-gray-900 truncate">{folder.name}</p>
+              </div>
+              <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setFolderName(folder.name); setShowFolderModal(true); }}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  編集
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); openFolderPermissionModal(folder); }}
+                  className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+                >
+                  権限
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                >
+                  削除
+                </button>
+              </div>
+            </div>
+          ))}
 
-        {isMultiSelectMode && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={selectAllImages}
-              className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
-            >
-              {selectedImages.length === images.length ? '全解除' : '全選択'}
-            </button>
-            <button
-              onClick={openBulkPermissionModal}
-              disabled={selectedImages.length === 0}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
-            >
-              権限設定 ({selectedImages.length})
-            </button>
-            <button
-              onClick={handleBulkDelete}
-              disabled={selectedImages.length === 0}
-              className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50"
-            >
-              削除 ({selectedImages.length})
-            </button>
-          </div>
-        )}
-      </div>
-
-      {images.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
           {images.map((image) => (
             <div
-              key={image.id}
-              className={`bg-white rounded-lg shadow overflow-hidden group relative ${
-                isMultiSelectMode && selectedImages.includes(image.id)
-                  ? 'ring-2 ring-blue-500'
-                  : ''
-              }`}
-              onClick={() => isMultiSelectMode && toggleImageSelection(image.id)}
+              key={`image-${image.id}`}
+              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow group"
             >
-              {isMultiSelectMode && (
-                <div className="absolute top-2 left-2 z-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedImages.includes(image.id)}
-                    onChange={() => toggleImageSelection(image.id)}
-                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-              <div className="aspect-square bg-gray-100 relative">
+              <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-100">
                 <img
                   src={getImageUrl(image.storage_path)}
                   alt={image.original_filename}
                   className="w-full h-full object-cover"
                 />
-                {!isMultiSelectMode && (
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center gap-1 sm:gap-2 opacity-0 group-hover:opacity-100">
+              </div>
+              <div className="p-2">
+                <p className="text-xs text-gray-900 truncate" title={image.original_filename}>
+                  {image.original_filename}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {image.permissions?.length || 0}人に許可
+                </p>
+              </div>
+              <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => openPermissionModal(image)}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  権限
+                </button>
+                <button
+                  onClick={() => handleDeleteImage(image.id)}
+                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                >
+                  削除
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {folders.length === 0 && images.length === 0 && (
+            <div className="col-span-full py-16 text-center text-gray-500">
+              <div className="text-5xl mb-4">📂</div>
+              <p>フォルダまたは画像をドラッグ＆ドロップしてアップロード</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">名前</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">タイプ</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">権限</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {folders.map((folder) => (
+                <tr
+                  key={`folder-${folder.id}`}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setCurrentFolderId(folder.id)}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📁</span>
+                      <span className="text-sm font-medium text-gray-900">{folder.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">フォルダ</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">-</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setFolderName(folder.name); setShowFolderModal(true); }}
+                      className="text-blue-600 hover:text-blue-800 text-sm mr-2"
+                    >
+                      編集
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      削除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {images.map((image) => (
+                <tr key={`image-${image.id}`} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={getImageUrl(image.storage_path)}
+                        alt=""
+                        className="w-8 h-8 object-cover rounded"
+                      />
+                      <span className="text-sm text-gray-900 truncate max-w-[150px] sm:max-w-none">
+                        {image.original_filename}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">画像</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">
+                    {image.permissions?.length || 0}人
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => openPermissionModal(image)}
-                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white text-gray-900 rounded text-xs sm:text-sm font-medium hover:bg-gray-100"
+                      className="text-blue-600 hover:text-blue-800 text-sm mr-2"
                     >
                       権限
                     </button>
                     <button
-                      onClick={() => handleDelete(image.id)}
-                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 text-white rounded text-xs sm:text-sm font-medium hover:bg-red-700"
+                      onClick={() => handleDeleteImage(image.id)}
+                      className="text-red-600 hover:text-red-800 text-sm"
                     >
                       削除
                     </button>
-                  </div>
-                )}
-              </div>
-              <div className="p-2 sm:p-3">
-                <p className="text-xs sm:text-sm text-gray-900 truncate">
-                  {image.original_filename}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {image.folder?.name || 'ルート'}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-          画像がありません
+                  </td>
+                </tr>
+              ))}
+              {folders.length === 0 && images.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-16 text-center text-gray-500">
+                    フォルダまたは画像をドラッグ＆ドロップしてアップロード
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* 権限設定モーダル */}
-      {showPermissionModal && (
+      {showFolderModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
-              アクセス権限設定
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              {editingFolder ? 'フォルダを編集' : '新規フォルダ'}
             </h2>
-            <p className="text-sm text-gray-500 mb-4">
-              {selectedImages.length > 0
-                ? `${selectedImages.length}件の画像に適用`
-                : selectedImage?.original_filename}
-            </p>
-            <div className="space-y-2 max-h-60 sm:max-h-96 overflow-y-auto">
-              {users.map((user) => (
-                <label
-                  key={user.id}
-                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedUserIds.includes(user.id)}
-                    onChange={() => toggleUser(user.id)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {user.name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                  </div>
-                </label>
-              ))}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                フォルダ名 *
+              </label>
+              <input
+                type="text"
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="フォルダ名を入力"
+                autoFocus
+              />
             </div>
-            <div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <div className="text-sm text-gray-500">
-                {selectedUserIds.length}名を選択中
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPermissionModal(false);
-                    setSelectedImage(null);
-                  }}
-                  className="flex-1 sm:flex-none px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleSavePermissions}
-                  disabled={saving}
-                  className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {saving ? '保存中...' : '保存'}
-                </button>
-              </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setShowFolderModal(false); setFolderName(''); setEditingFolder(null); }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={editingFolder ? handleEditFolder : handleCreateFolder}
+                disabled={saving || !folderName.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? '保存中...' : '保存'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* フォルダ権限設定モーダル */}
-      {showFolderPermissionModal && selectedFolderForPermission && (
+      {showPermissionModal && selectedImage && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
-              フォルダ権限設定
+              画像の権限設定
             </h2>
-            <p className="text-sm text-gray-500 mb-2">
-              フォルダ: {selectedFolderForPermission.name}
-            </p>
-            <p className="text-xs text-gray-400 mb-4">
-              このフォルダ内のすべての画像に自動的にアクセス権限が付与されます
-            </p>
-            <div className="space-y-2 max-h-60 sm:max-h-96 overflow-y-auto">
+            <p className="text-sm text-gray-500 mb-4">{selectedImage.original_filename}</p>
+            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
               {users.map((user) => (
-                <label
-                  key={user.id}
-                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                >
+                <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selectedUserIds.includes(user.id)}
-                    onChange={() => toggleUser(user.id)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedUserIds([...selectedUserIds, user.id]);
+                      } else {
+                        setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
+                      }
+                    }}
+                    className="w-5 h-5 cursor-pointer accent-blue-600"
                   />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {user.name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                  </div>
+                  <span className="text-sm text-gray-900">{user.name}</span>
+                  <span className="text-xs text-gray-500">{user.email}</span>
                 </label>
               ))}
             </div>
-            <div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <div className="text-sm text-gray-500">
-                {selectedUserIds.length}名を選択中
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowFolderPermissionModal(false);
-                    setSelectedFolderForPermission(null);
-                  }}
-                  className="flex-1 sm:flex-none px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleSaveFolderPermissions}
-                  disabled={saving}
-                  className="flex-1 sm:flex-none px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {saving ? '保存中...' : '保存'}
-                </button>
-              </div>
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => { setShowPermissionModal(false); setSelectedImage(null); }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSavePermissions}
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFolderPermissionModal && editingFolder && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+              フォルダ権限設定: {editingFolder.name}
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              このフォルダ内のすべての画像にアクセス権限が付与されます。
+            </p>
+            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+              {users.map((user) => (
+                <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedUserIds.includes(user.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedUserIds([...selectedUserIds, user.id]);
+                      } else {
+                        setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
+                      }
+                    }}
+                    className="w-5 h-5 cursor-pointer accent-blue-600"
+                  />
+                  <span className="text-sm text-gray-900">{user.name}</span>
+                  <span className="text-xs text-gray-500">{user.email}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => { setShowFolderPermissionModal(false); setEditingFolder(null); }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSaveFolderPermissions}
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? '保存中...' : '保存'}
+              </button>
             </div>
           </div>
         </div>

@@ -484,19 +484,19 @@ export default function UsersPage() {
                   </select>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.is_ceo}
                       onChange={(e) =>
                         setFormData({ ...formData, is_ceo: e.target.checked })
                       }
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="w-5 h-5 cursor-pointer accent-blue-600"
                     />
                     <span className="text-sm text-gray-700">社長</span>
                   </label>
                   {editingUser && (
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={formData.is_active}
@@ -506,7 +506,7 @@ export default function UsersPage() {
                             is_active: e.target.checked,
                           })
                         }
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="w-5 h-5 cursor-pointer accent-blue-600"
                       />
                       <span className="text-sm text-gray-700">有効</span>
                     </label>
