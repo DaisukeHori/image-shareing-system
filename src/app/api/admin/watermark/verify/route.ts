@@ -23,12 +23,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ファイルサイズチェック（10MB制限）
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { success: false, error: 'ファイルサイズが大きすぎます（10MB以下にしてください）' },
+        { status: 400 }
+      );
+    }
+
+    // ファイルタイプチェック
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      return NextResponse.json(
+        { success: false, error: `サポートされていないファイル形式です: ${file.type}。PNG, JPEG, WebPのみ対応しています。` },
+        { status: 400 }
+      );
+    }
+
+    console.log(`Processing watermark verification: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
     // 画像バッファを取得
     const arrayBuffer = await file.arrayBuffer();
     const imageBuffer = Buffer.from(arrayBuffer);
 
     // 電子透かしを読み取り
-    const watermarkInfo = await readWatermark(imageBuffer);
+    let watermarkInfo;
+    try {
+      watermarkInfo = await readWatermark(imageBuffer);
+    } catch (readError) {
+      console.error('Watermark read error:', readError);
+      return NextResponse.json({
+        success: true,
+        data: {
+          found: false,
+          message: '電子透かしの読み取りに失敗しました。画像が破損しているか、形式が異なる可能性があります。',
+        },
+      });
+    }
 
     if (!watermarkInfo) {
       return NextResponse.json({
