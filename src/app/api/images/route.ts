@@ -15,6 +15,7 @@ interface ImageData {
   folder: { id: string; name: string } | null;
   file_type?: 'image' | 'video';
   mime_type?: string;
+  created_at: string;
 }
 
 interface ImageWithLevel extends ImageData {
@@ -52,6 +53,9 @@ export async function GET(request: NextRequest) {
           original_filename,
           storage_path,
           folder_id,
+          created_at,
+          file_type,
+          mime_type,
           folder:folders (
             id,
             name
@@ -70,6 +74,9 @@ export async function GET(request: NextRequest) {
             original_filename,
             storage_path,
             folder_id,
+            created_at,
+            file_type,
+            mime_type,
             folder:folders (
               id,
               name
@@ -145,6 +152,9 @@ export async function GET(request: NextRequest) {
           original_filename,
           storage_path,
           folder_id,
+          created_at,
+          file_type,
+          mime_type,
           folder:folders (
             id,
             name

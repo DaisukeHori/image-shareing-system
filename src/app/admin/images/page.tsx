@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import HelpTip from '@/components/HelpTip';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -37,6 +37,9 @@ interface Image {
   file_type?: 'image' | 'video';
   mime_type?: string;
 }
+
+type SortKey = 'filename' | 'created_at';
+type SortOrder = 'asc' | 'desc';
 
 export default function ImagesPage() {
   const [images, setImages] = useState<Image[]>([]);
@@ -78,20 +81,37 @@ export default function ImagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  // プレビュー用のナビゲーション関数
-  const currentPreviewIndex = previewImage ? images.findIndex(img => img.id === previewImage.id) : -1;
+  // 並び替え
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // ソート済み画像（useMemoで最適化）
+  const sortedImages = useMemo(() => {
+    return [...images].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === 'filename') {
+        comparison = a.original_filename.localeCompare(b.original_filename, 'ja');
+      } else if (sortKey === 'created_at') {
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [images, sortKey, sortOrder]);
+
+  // プレビュー用のナビゲーション関数（sortedImagesを使用）
+  const currentPreviewIndex = previewImage ? sortedImages.findIndex(img => img.id === previewImage.id) : -1;
   const hasPrevImage = currentPreviewIndex > 0;
-  const hasNextImage = currentPreviewIndex >= 0 && currentPreviewIndex < images.length - 1;
+  const hasNextImage = currentPreviewIndex >= 0 && currentPreviewIndex < sortedImages.length - 1;
 
   function goToPrevImage() {
     if (hasPrevImage) {
-      setPreviewImage(images[currentPreviewIndex - 1]);
+      setPreviewImage(sortedImages[currentPreviewIndex - 1]);
     }
   }
 
   function goToNextImage() {
     if (hasNextImage) {
-      setPreviewImage(images[currentPreviewIndex + 1]);
+      setPreviewImage(sortedImages[currentPreviewIndex + 1]);
     }
   }
 
@@ -1348,6 +1368,25 @@ export default function ImagesPage() {
         </div>
       )}
 
+      {/* 並び替えUI */}
+      <div className="flex items-center justify-end gap-2 mb-3">
+        <span className="text-xs text-gray-500">並び替え:</span>
+        <select
+          value={`${sortKey}-${sortOrder}`}
+          onChange={(e) => {
+            const [key, order] = e.target.value.split('-') as [SortKey, SortOrder];
+            setSortKey(key);
+            setSortOrder(order);
+          }}
+          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="created_at-desc">作成日（新しい順）</option>
+          <option value="created_at-asc">作成日（古い順）</option>
+          <option value="filename-asc">ファイル名（A→Z）</option>
+          <option value="filename-desc">ファイル名（Z→A）</option>
+        </select>
+      </div>
+
       {viewMode === 'grid' ? (
         <div className="relative">
           {/* 移動中オーバーレイ */}
@@ -1417,7 +1456,7 @@ export default function ImagesPage() {
             </div>
           ))}
 
-          {images.map((image) => (
+          {sortedImages.map((image) => (
             <div
               key={`image-${image.id}`}
               draggable
@@ -1590,7 +1629,7 @@ export default function ImagesPage() {
                   </td>
                 </tr>
               ))}
-              {images.map((image) => (
+              {sortedImages.map((image) => (
                 <tr
                   key={`image-${image.id}`}
                   draggable
@@ -2015,7 +2054,7 @@ export default function ImagesPage() {
             <div className="mt-4 flex flex-col items-center gap-2">
               <p className="text-white text-sm text-center">
                 {previewImage.original_filename}
-                <span className="text-gray-400 ml-2">({currentPreviewIndex + 1} / {images.length})</span>
+                <span className="text-gray-400 ml-2">({currentPreviewIndex + 1} / {sortedImages.length})</span>
               </p>
               <div className="flex gap-2">
                 <button
