@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 
+// 権限レベル: view < download < edit
+type PermissionLevel = 'view' | 'download' | 'edit';
+
 // フォルダ権限取得
 export async function GET(
   request: NextRequest,
@@ -24,6 +27,7 @@ export async function GET(
       .select(`
         id,
         user_id,
+        level,
         user:users (
           id,
           name,
@@ -60,13 +64,23 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { user_ids } = body;
+    const { permissions } = body;
 
-    if (!Array.isArray(user_ids)) {
-      return NextResponse.json(
-        { success: false, error: 'user_ids must be an array' },
-        { status: 400 }
-      );
+    // 新形式: permissions = [{ user_id, level }]
+    // 旧形式: user_ids = [user_id] (後方互換性)
+    const permissionList: { user_id: string; level: PermissionLevel }[] = [];
+
+    if (Array.isArray(permissions)) {
+      for (const p of permissions) {
+        if (p.user_id && ['view', 'download', 'edit'].includes(p.level)) {
+          permissionList.push({ user_id: p.user_id, level: p.level });
+        }
+      }
+    } else if (Array.isArray(body.user_ids)) {
+      // 旧形式の後方互換性
+      for (const userId of body.user_ids) {
+        permissionList.push({ user_id: userId, level: 'view' });
+      }
     }
 
     const supabase = createServiceClient();
@@ -78,15 +92,16 @@ export async function PUT(
       .eq('folder_id', id);
 
     // 新しい権限を追加
-    if (user_ids.length > 0) {
-      const permissions = user_ids.map((user_id: string) => ({
+    if (permissionList.length > 0) {
+      const records = permissionList.map((p) => ({
         folder_id: id,
-        user_id,
+        user_id: p.user_id,
+        level: p.level,
       }));
 
       const { error } = await supabase
         .from('folder_permissions')
-        .insert(permissions);
+        .insert(records);
 
       if (error) throw error;
     }

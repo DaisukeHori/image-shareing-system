@@ -10,6 +10,7 @@ interface Image {
   original_filename: string;
   storage_path: string;
   folder: { id: string; name: string } | null;
+  permission_level: 'view' | 'download' | 'edit';
 }
 
 interface ApprovalRequest {
@@ -106,6 +107,22 @@ export default function Home() {
       if (data.success && data.downloadUrl) {
         window.open(data.downloadUrl, '_blank');
         fetchData();
+      } else {
+        alert(data.error || 'ダウンロードに失敗しました');
+      }
+    } catch (error) {
+      console.error('Failed to download:', error);
+      alert('ダウンロードに失敗しました');
+    }
+  }
+
+  async function handleDirectDownload(imageId: string) {
+    try {
+      const res = await fetch(`/api/images/${imageId}/download`);
+      const data = await res.json();
+
+      if (data.success && data.downloadUrl) {
+        window.open(data.downloadUrl, '_blank');
       } else {
         alert(data.error || 'ダウンロードに失敗しました');
       }
@@ -245,12 +262,30 @@ export default function Home() {
                     onClick={() => setSelectedImage(image)}
                     className="bg-white rounded-lg shadow overflow-hidden cursor-pointer hover:shadow-lg transition-shadow active:scale-[0.98]"
                   >
-                    <div className="aspect-square bg-gray-100">
+                    <div className="aspect-square bg-gray-100 relative">
                       <img
                         src={getImageUrl(image.storage_path)}
                         alt={image.original_filename}
                         className="w-full h-full object-cover"
                       />
+                      {/* 権限レベルバッジ */}
+                      <div className="absolute top-1 right-1">
+                        {image.permission_level === 'edit' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-purple-500 text-white rounded">
+                            編集可
+                          </span>
+                        )}
+                        {image.permission_level === 'download' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-green-500 text-white rounded">
+                            DL可
+                          </span>
+                        )}
+                        {image.permission_level === 'view' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-gray-500 text-white rounded">
+                            閲覧
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="p-2 sm:p-3">
                       <p className="text-xs sm:text-sm text-gray-900 truncate">
@@ -404,12 +439,12 @@ export default function Home() {
         )}
       </main>
 
-      {/* 申請モーダル */}
+      {/* 画像詳細モーダル */}
       {selectedImage && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
-              画像の利用申請
+              {selectedImage.permission_level === 'view' ? '画像の利用申請' : '画像のダウンロード'}
             </h2>
             <div className="mb-4">
               <img
@@ -421,47 +456,81 @@ export default function Home() {
                 {selectedImage.original_filename}
               </p>
             </div>
-            <form onSubmit={handleSubmitRequest}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  利用目的 *
-                </label>
-                <textarea
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                  placeholder="例：店舗のSNS投稿用として使用します"
-                  required
-                />
-              </div>
-              <p className="text-xs sm:text-sm text-gray-500 mb-4">
-                申請後、所属長または社長の承認が必要です。
-                <br />
-                承認後7日以内に1回のみダウンロード可能です。
-                <br />
-                ダウンロードした画像には電子透かしが入ります。
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedImage(null);
-                    setPurpose('');
-                  }}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || !purpose.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-                >
-                  {submitting ? '送信中...' : '申請する'}
-                </button>
-              </div>
-            </form>
+
+            {/* ダウンロード可/編集可の場合は直接ダウンロード */}
+            {(selectedImage.permission_level === 'download' || selectedImage.permission_level === 'edit') && (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  この画像はダウンロード権限があります。直接ダウンロードできます。
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setPurpose('');
+                    }}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                  >
+                    閉じる
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleDirectDownload(selectedImage.id);
+                      setSelectedImage(null);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                  >
+                    ダウンロード
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 閲覧のみの場合は申請フォーム */}
+            {selectedImage.permission_level === 'view' && (
+              <form onSubmit={handleSubmitRequest}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    利用目的 *
+                  </label>
+                  <textarea
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+                    placeholder="例：店舗のSNS投稿用として使用します"
+                    required
+                  />
+                </div>
+                <p className="text-xs sm:text-sm text-gray-500 mb-4">
+                  申請後、所属長または社長の承認が必要です。
+                  <br />
+                  承認後7日以内に1回のみダウンロード可能です。
+                  <br />
+                  ダウンロードした画像には電子透かしが入ります。
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setPurpose('');
+                    }}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting || !purpose.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  >
+                    {submitting ? '送信中...' : '申請する'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

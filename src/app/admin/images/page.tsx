@@ -46,7 +46,7 @@ export default function ImagesPage() {
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showFolderPermissionModal, setShowFolderPermissionModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [userPermissions, setUserPermissions] = useState<Record<string, 'view' | 'download' | 'edit'>>({});
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -653,21 +653,48 @@ export default function ImagesPage() {
 
   function openPermissionModal(image: Image) {
     setSelectedImage(image);
-    setSelectedUserIds(image.permissions?.map(p => p.user_id) || []);
+    // 既存の権限を読み込む
+    fetch(`/api/admin/images/${image.id}/permissions`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const perms: Record<string, 'view' | 'download' | 'edit'> = {};
+          data.data.forEach((p: { user_id: string; level: 'view' | 'download' | 'edit' }) => {
+            perms[p.user_id] = p.level || 'view';
+          });
+          setUserPermissions(perms);
+        }
+      });
     setShowPermissionModal(true);
   }
 
   function openFolderPermissionModal(folder: Folder) {
     setEditingFolder(folder);
-    setSelectedUserIds([]);
+    setUserPermissions({});
     setShowFolderPermissionModal(true);
     fetch(`/api/admin/folders/${folder.id}/permissions`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setSelectedUserIds(data.data.map((p: { user_id: string }) => p.user_id));
+          const perms: Record<string, 'view' | 'download' | 'edit'> = {};
+          data.data.forEach((p: { user_id: string; level: 'view' | 'download' | 'edit' }) => {
+            perms[p.user_id] = p.level || 'view';
+          });
+          setUserPermissions(perms);
         }
       });
+  }
+
+  function setUserPermissionLevel(userId: string, level: 'view' | 'download' | 'edit' | 'none') {
+    setUserPermissions(prev => {
+      const newPerms = { ...prev };
+      if (level === 'none') {
+        delete newPerms[userId];
+      } else {
+        newPerms[userId] = level;
+      }
+      return newPerms;
+    });
   }
 
   async function handleSavePermissions() {
@@ -675,10 +702,15 @@ export default function ImagesPage() {
     setSaving(true);
 
     try {
+      const permissions = Object.entries(userPermissions).map(([user_id, level]) => ({
+        user_id,
+        level,
+      }));
+
       const res = await fetch(`/api/admin/images/${selectedImage.id}/permissions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: selectedUserIds }),
+        body: JSON.stringify({ permissions }),
       });
 
       const data = await res.json();
@@ -702,10 +734,15 @@ export default function ImagesPage() {
     setSaving(true);
 
     try {
+      const permissions = Object.entries(userPermissions).map(([user_id, level]) => ({
+        user_id,
+        level,
+      }));
+
       const res = await fetch(`/api/admin/folders/${editingFolder.id}/permissions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: selectedUserIds }),
+        body: JSON.stringify({ permissions }),
       });
 
       const data = await res.json();
@@ -1198,28 +1235,32 @@ export default function ImagesPage() {
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               画像の権限設定
             </h2>
-            <p className="text-sm text-gray-500 mb-4">{selectedImage.original_filename}</p>
+            <p className="text-sm text-gray-500 mb-2">{selectedImage.original_filename}</p>
+            <div className="text-xs text-gray-400 mb-4 space-y-1">
+              <div>・<span className="font-medium">閲覧のみ</span>: 画像を見れるが申請が必要</div>
+              <div>・<span className="font-medium">ダウンロード可</span>: 直接ダウンロード可能</div>
+              <div>・<span className="font-medium">編集・削除可</span>: 画像の編集・削除が可能</div>
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer select-none"
-                  onClick={() => {
-                    setSelectedUserIds(prev =>
-                      prev.includes(user.id)
-                        ? prev.filter(id => id !== user.id)
-                        : [...prev, user.id]
-                    );
-                  }}
+                  className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 rounded"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedUserIds.includes(user.id)}
-                    readOnly
-                    className="w-5 h-5 pointer-events-none accent-blue-600"
-                  />
-                  <span className="text-sm text-gray-900">{user.name}</span>
-                  <span className="text-xs text-gray-500">{user.email}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-900 block truncate">{user.name}</span>
+                    <span className="text-xs text-gray-500 block truncate">{user.email}</span>
+                  </div>
+                  <select
+                    value={userPermissions[user.id] || 'none'}
+                    onChange={(e) => setUserPermissionLevel(user.id, e.target.value as 'view' | 'download' | 'edit' | 'none')}
+                    className="text-sm border rounded px-2 py-1 bg-white"
+                  >
+                    <option value="none">権限なし</option>
+                    <option value="view">閲覧のみ</option>
+                    <option value="download">ダウンロード可</option>
+                    <option value="edit">編集・削除可</option>
+                  </select>
                 </div>
               ))}
             </div>
@@ -1248,30 +1289,34 @@ export default function ImagesPage() {
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               フォルダ権限設定: {editingFolder.name}
             </h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 mb-2">
               このフォルダ内のすべての画像にアクセス権限が付与されます。
             </p>
+            <div className="text-xs text-gray-400 mb-4 space-y-1">
+              <div>・<span className="font-medium">閲覧のみ</span>: 画像を見れるが申請が必要</div>
+              <div>・<span className="font-medium">ダウンロード可</span>: 直接ダウンロード可能</div>
+              <div>・<span className="font-medium">編集・削除可</span>: 画像の編集・削除が可能</div>
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer select-none"
-                  onClick={() => {
-                    setSelectedUserIds(prev =>
-                      prev.includes(user.id)
-                        ? prev.filter(id => id !== user.id)
-                        : [...prev, user.id]
-                    );
-                  }}
+                  className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 rounded"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedUserIds.includes(user.id)}
-                    readOnly
-                    className="w-5 h-5 pointer-events-none accent-blue-600"
-                  />
-                  <span className="text-sm text-gray-900">{user.name}</span>
-                  <span className="text-xs text-gray-500">{user.email}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-900 block truncate">{user.name}</span>
+                    <span className="text-xs text-gray-500 block truncate">{user.email}</span>
+                  </div>
+                  <select
+                    value={userPermissions[user.id] || 'none'}
+                    onChange={(e) => setUserPermissionLevel(user.id, e.target.value as 'view' | 'download' | 'edit' | 'none')}
+                    className="text-sm border rounded px-2 py-1 bg-white"
+                  >
+                    <option value="none">権限なし</option>
+                    <option value="view">閲覧のみ</option>
+                    <option value="download">ダウンロード可</option>
+                    <option value="edit">編集・削除可</option>
+                  </select>
                 </div>
               ))}
             </div>
