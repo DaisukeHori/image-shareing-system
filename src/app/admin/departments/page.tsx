@@ -234,7 +234,43 @@ export default function DepartmentsPage() {
         <HelpTip content="同じ所属名がある場合は所属長のみ更新されます。所属長はユーザーとして先に登録されている必要があります。" />
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
+      {/* モバイル用カードビュー */}
+      <div className="sm:hidden space-y-3">
+        {departments.map((dept) => (
+          <div key={dept.id} className="bg-white shadow rounded-lg p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="font-medium text-gray-900">{dept.name}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  所属長: {dept.manager?.name || '未設定'}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-3">
+              <button
+                onClick={() => openModal(dept)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                編集
+              </button>
+              <button
+                onClick={() => handleDelete(dept.id)}
+                className="text-sm text-red-600 hover:text-red-800"
+              >
+                削除
+              </button>
+            </div>
+          </div>
+        ))}
+        {departments.length === 0 && (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            所属が登録されていません
+          </div>
+        )}
+      </div>
+
+      {/* デスクトップ用テーブルビュー */}
+      <div className="hidden sm:block bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

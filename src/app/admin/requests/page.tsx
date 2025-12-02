@@ -186,12 +186,12 @@ export default function RequestsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">承認申請一覧</h1>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">承認申請一覧</h1>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
         >
           <option value="">すべてのステータス</option>
           <option value="pending">承認待ち</option>
@@ -202,7 +202,133 @@ export default function RequestsPage() {
         </select>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* モバイル用カードビュー */}
+      <div className="sm:hidden space-y-3">
+        {requests.map((request) => (
+          <div
+            key={request.id}
+            className={`bg-white shadow rounded-lg p-4 ${
+              isExpiredUsage(request.usage_end_date) && request.status === 'downloaded' ? 'border-l-4 border-red-500' : ''
+            }`}
+          >
+            <div className="flex gap-3 mb-3">
+              <img
+                src={getImageUrl(request.image.storage_path)}
+                alt=""
+                className="w-16 h-16 rounded object-cover flex-shrink-0 cursor-pointer"
+                onClick={() => setPreviewImage({
+                  url: getImageUrl(request.image.storage_path),
+                  filename: request.image.original_filename
+                })}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <button
+                    onClick={() => setDetailModal(request)}
+                    className="text-sm font-medium text-blue-600 hover:underline"
+                  >
+                    {request.request_number}
+                  </button>
+                  {request.requester_comment && (
+                    <span className="text-blue-500" title="コメントあり">💬</span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-900">{request.user.name}</p>
+                <p className="text-xs text-gray-500">{request.user.department?.name || '未所属'}</p>
+              </div>
+              <span className={`self-start px-2 py-1 text-xs rounded whitespace-nowrap ${statusLabels[request.status].class}`}>
+                {statusLabels[request.status].text}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div>
+                <p className="text-xs text-gray-500">利用目的</p>
+                <p className="text-gray-900">
+                  {request.purpose_type ? purposeTypeLabels[request.purpose_type] : '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">掲載終了日</p>
+                <p className={`${isExpiredUsage(request.usage_end_date) ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
+                  {request.usage_end_date ? formatDateOnly(request.usage_end_date) : '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">申請日</p>
+                <p className="text-gray-900">{formatDateOnly(request.created_at)}</p>
+              </div>
+              {request.approver && (
+                <div>
+                  <p className="text-xs text-gray-500">承認者</p>
+                  <p className="text-gray-900">{request.approver.name}</p>
+                </div>
+              )}
+            </div>
+
+            {request.rejection_reason && (
+              <div className="mb-3 p-2 bg-red-50 rounded text-xs text-red-600">
+                却下理由: {request.rejection_reason}
+              </div>
+            )}
+
+            {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && (
+              <div className="mb-3 text-xs">
+                {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
+                  <span className="text-green-600">削除確認済</span>
+                ) : (
+                  <span className="text-red-600">
+                    {!request.deletion_confirmed_user && '本人未確認 '}
+                    {!request.deletion_confirmed_approver && '承認者未確認'}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {request.status === 'pending' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setApproveModal({
+                      requestId: request.id,
+                      requestNumber: request.request_number,
+                      requesterComment: request.requester_comment,
+                    });
+                    setApproverComment('');
+                  }}
+                  disabled={actionLoading === request.id}
+                  className="flex-1 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {actionLoading === request.id ? '処理中...' : '承認'}
+                </button>
+                <button
+                  onClick={() => {
+                    setRejectModal({
+                      requestId: request.id,
+                      requestNumber: request.request_number,
+                      requesterComment: request.requester_comment,
+                    });
+                    setRejectionReason('');
+                    setApproverComment('');
+                  }}
+                  disabled={actionLoading === request.id}
+                  className="flex-1 px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  却下
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {requests.length === 0 && (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            申請がありません
+          </div>
+        )}
+      </div>
+
+      {/* デスクトップ用テーブルビュー */}
+      <div className="hidden sm:block bg-white shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
