@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '50mb',
+      sizeLimit: '100mb',
     },
   },
 };
@@ -16,7 +16,7 @@ export const config = {
 export const dynamic = 'force-dynamic';
 
 // 最大実行時間を延長（秒単位、Vercel Proの場合は300まで可能）
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // 画像一覧取得
 export async function GET(request: NextRequest) {
@@ -101,9 +101,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ファイルサイズチェック (画像: 10MB, 動画: 500MB)
-    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
-    const maxSizeLabel = isVideo ? '500MB' : '10MB';
+    // ファイルサイズチェック (画像: 50MB, 動画: 500MB)
+    const maxSize = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+    const maxSizeLabel = isVideo ? '500MB' : '50MB';
     if (file.size > maxSize) {
       return NextResponse.json(
         { success: false, error: `ファイルサイズは${maxSizeLabel}以下にしてください` },

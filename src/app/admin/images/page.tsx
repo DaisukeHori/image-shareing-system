@@ -452,52 +452,63 @@ export default function ImagesPage() {
     setUploadProgress({ current: 0, total: files.length });
     setUploadErrors([]);
     const errors: string[] = [];
+    let completedCount = 0;
 
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setUploadProgress({ current: i + 1, total: files.length });
+    // 単一ファイルのアップロード関数
+    async function uploadSingleFile(file: File): Promise<void> {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (currentFolderId) {
+        formData.append('folder_id', currentFolderId);
+      }
 
-        const formData = new FormData();
-        formData.append('file', file);
-        if (currentFolderId) {
-          formData.append('folder_id', currentFolderId);
-        }
+      try {
+        // タイムアウトをファイルサイズに応じて設定（最小60秒、1MB毎に+2秒、最大5分）
+        const timeoutMs = Math.min(300000, Math.max(60000, 60000 + (file.size / 1024 / 1024) * 2000));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-        try {
-          // タイムアウトを60秒に設定（大きいファイル対応）
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000);
+        const res = await fetch('/api/admin/images', {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
 
-          const res = await fetch('/api/admin/images', {
-            method: 'POST',
-            body: formData,
-            signal: controller.signal,
-          });
+        clearTimeout(timeoutId);
 
-          clearTimeout(timeoutId);
-
-          const data = await res.json();
-          if (!data.success) {
-            const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
-            console.error(errorMsg);
-            errors.push(errorMsg);
-          }
-        } catch (fetchError) {
-          let errorMsg = `${file.name}: `;
-          if (fetchError instanceof Error) {
-            if (fetchError.name === 'AbortError') {
-              errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
-            } else {
-              errorMsg += fetchError.message || 'ネットワークエラー';
-            }
-          } else {
-            errorMsg += 'ネットワークエラー';
-          }
-          console.error(errorMsg, fetchError);
+        const data = await res.json();
+        if (!data.success) {
+          const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
+          console.error(errorMsg);
           errors.push(errorMsg);
         }
+      } catch (fetchError) {
+        let errorMsg = `${file.name}: `;
+        if (fetchError instanceof Error) {
+          if (fetchError.name === 'AbortError') {
+            errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
+          } else {
+            errorMsg += fetchError.message || 'ネットワークエラー';
+          }
+        } else {
+          errorMsg += 'ネットワークエラー';
+        }
+        console.error(errorMsg, fetchError);
+        errors.push(errorMsg);
+      } finally {
+        completedCount++;
+        setUploadProgress({ current: completedCount, total: files.length });
       }
+    }
+
+    try {
+      // 並列アップロード（同時5ファイル）で高速化
+      const CONCURRENCY = 5;
+      for (let i = 0; i < files.length; i += CONCURRENCY) {
+        const batch = files.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(uploadSingleFile));
+      }
+
       fetchData();
       if (errors.length > 0) {
         setUploadErrors(errors);
@@ -524,8 +535,55 @@ export default function ImagesPage() {
     setUploadErrors([]);
     const errors: string[] = [];
     const totalFiles = folderFiles.length;
-    let uploadedCount = 0;
+    let completedCount = 0;
     setUploadProgress({ current: 0, total: totalFiles });
+
+    // 単一ファイルのアップロード関数
+    async function uploadSingleFile(file: File, targetFolderId: string | null): Promise<void> {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (targetFolderId) {
+        formData.append('folder_id', targetFolderId);
+      }
+
+      try {
+        // タイムアウトをファイルサイズに応じて設定
+        const timeoutMs = Math.min(300000, Math.max(60000, 60000 + (file.size / 1024 / 1024) * 2000));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const res = await fetch('/api/admin/images', {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const data = await res.json();
+        if (!data.success) {
+          const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+        }
+      } catch (fetchError) {
+        let errorMsg = `${file.name}: `;
+        if (fetchError instanceof Error) {
+          if (fetchError.name === 'AbortError') {
+            errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
+          } else {
+            errorMsg += fetchError.message || 'ネットワークエラー';
+          }
+        } else {
+          errorMsg += 'ネットワークエラー';
+        }
+        console.error(errorMsg, fetchError);
+        errors.push(errorMsg);
+      } finally {
+        completedCount++;
+        setUploadProgress({ current: completedCount, total: totalFiles });
+      }
+    }
 
     try {
       for (const [name, files] of folderGroups) {
@@ -549,51 +607,14 @@ export default function ImagesPage() {
           errors.push(`フォルダ「${name}」の作成に失敗`);
         }
 
-        for (const file of files) {
-          uploadedCount++;
-          setUploadProgress({ current: uploadedCount, total: totalFiles });
-
-          const formData = new FormData();
-          formData.append('file', file);
-          if (targetFolderId) {
-            formData.append('folder_id', targetFolderId);
-          }
-
-          try {
-            // タイムアウトを60秒に設定（大きいファイル対応）
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-            const res = await fetch('/api/admin/images', {
-              method: 'POST',
-              body: formData,
-              signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
-
-            const data = await res.json();
-            if (!data.success) {
-              const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
-              console.error(errorMsg);
-              errors.push(errorMsg);
-            }
-          } catch (fetchError) {
-            let errorMsg = `${file.name}: `;
-            if (fetchError instanceof Error) {
-              if (fetchError.name === 'AbortError') {
-                errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
-              } else {
-                errorMsg += fetchError.message || 'ネットワークエラー';
-              }
-            } else {
-              errorMsg += 'ネットワークエラー';
-            }
-            console.error(errorMsg, fetchError);
-            errors.push(errorMsg);
-          }
+        // 並列アップロード（同時5ファイル）で高速化
+        const CONCURRENCY = 5;
+        for (let i = 0; i < files.length; i += CONCURRENCY) {
+          const batch = files.slice(i, i + CONCURRENCY);
+          await Promise.all(batch.map(f => uploadSingleFile(f, targetFolderId)));
         }
       }
+
       fetchData();
       if (errors.length > 0) {
         setUploadErrors(errors);
