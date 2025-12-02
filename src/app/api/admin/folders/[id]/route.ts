@@ -94,15 +94,15 @@ export async function DELETE(
       if (images && images.length > 0) {
         // Storageから画像ファイルを削除
         const storagePaths = images
-          .filter((img) => img.storage_path)
-          .map((img) => img.storage_path);
+          .filter((img: { id: string; storage_path: string | null }) => img.storage_path)
+          .map((img: { id: string; storage_path: string | null }) => img.storage_path as string);
 
         if (storagePaths.length > 0) {
           await supabase.storage.from('images').remove(storagePaths);
         }
 
         // DBから画像レコードを削除
-        const imageIds = images.map((img) => img.id);
+        const imageIds = images.map((img: { id: string; storage_path: string | null }) => img.id);
         await supabase.from('images').delete().in('id', imageIds);
       }
 
