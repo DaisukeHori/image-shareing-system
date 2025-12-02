@@ -40,6 +40,7 @@ export default function WatermarkVerifyPage() {
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -65,11 +66,11 @@ export default function WatermarkVerifyPage() {
       if (data.success) {
         setResult(data.data);
       } else {
-        alert(data.error || '検証に失敗しました');
+        setErrorModal(data.error || '検証に失敗しました。画像形式をご確認ください。');
       }
     } catch (error) {
       console.error('Verify failed:', error);
-      alert('検証に失敗しました');
+      setErrorModal('検証に失敗しました。ネットワークエラーが発生した可能性があります。');
     } finally {
       setLoading(false);
     }
@@ -267,7 +268,52 @@ export default function WatermarkVerifyPage() {
             透かしが見つからない場合、その画像はこのシステムからダウンロードされたものではない可能性があります
           </li>
         </ol>
+
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h4 className="font-medium text-yellow-800 mb-2">注意事項</h4>
+          <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+            <li>ダウンロードした<strong>PNG形式のまま</strong>アップロードしてください</li>
+            <li>JPEG形式に変換すると透かしが失われます</li>
+            <li>画像をリサイズ・編集すると透かしが失われます</li>
+            <li>スクリーンショットからは透かしを検出できません</li>
+          </ul>
+        </div>
       </div>
+
+      {/* エラーモーダル */}
+      {errorModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">検証エラー</h3>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">{errorModal}</p>
+
+            <div className="bg-gray-50 p-3 rounded-lg mb-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">考えられる原因:</p>
+              <ul className="text-xs text-gray-600 list-disc list-inside space-y-1">
+                <li>画像がJPEG形式で保存された（PNG形式が必要）</li>
+                <li>画像が編集・リサイズされた</li>
+                <li>スクリーンショットで保存された</li>
+                <li>このシステムからダウンロードした画像ではない</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => setErrorModal(null)}
+              className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
