@@ -5,10 +5,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import HelpTip from '@/components/HelpTip';
 
+interface Folder {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  permission_level: 'view' | 'download' | 'edit';
+}
+
 interface Image {
   id: string;
   original_filename: string;
   storage_path: string;
+  folder_id: string | null;
   folder: { id: string; name: string } | null;
   permission_level: 'view' | 'download' | 'edit';
   file_type?: 'image' | 'video';
@@ -49,6 +57,10 @@ const purposeTypeLabels: Record<PurposeType, string> = {
 export default function Home() {
   const { data: session } = useSession();
   const [images, setImages] = useState<Image[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [allFolders, setAllFolders] = useState<Folder[]>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
   const [myRequests, setMyRequests] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
@@ -148,7 +160,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentFolderId]);
 
   // URLパラメータでタブを切り替え
   useEffect(() => {
@@ -174,16 +186,37 @@ export default function Home() {
     }
   }, [requestStep, consentStartTime]);
 
+  function buildBreadcrumbs(folderId: string | null, allFoldersList: Folder[]): Folder[] {
+    if (!folderId) return [];
+    const crumbs: Folder[] = [];
+    let current = allFoldersList.find(f => f.id === folderId);
+    while (current) {
+      crumbs.unshift(current);
+      current = current.parent_id ? allFoldersList.find(f => f.id === current!.parent_id) : undefined;
+    }
+    return crumbs;
+  }
+
   async function fetchData() {
     try {
-      const [imagesRes, requestsRes] = await Promise.all([
-        fetch('/api/images'),
+      const folderParam = currentFolderId ? `?parent_id=${currentFolderId}` : '?parent_id=null';
+      const imageParam = currentFolderId ? `?folder_id=${currentFolderId}` : '?folder_id=null';
+
+      const [foldersRes, imagesRes, requestsRes] = await Promise.all([
+        fetch(`/api/folders${folderParam}`),
+        fetch(`/api/images${imageParam}`),
         fetch('/api/requests'),
       ]);
 
+      const foldersData = await foldersRes.json();
       const imagesData = await imagesRes.json();
       const requestsData = await requestsRes.json();
 
+      if (foldersData.success) {
+        setFolders(foldersData.data);
+        setAllFolders(foldersData.flat || []);
+        setBreadcrumbs(buildBreadcrumbs(currentFolderId, foldersData.flat || []));
+      }
       if (imagesData.success) setImages(imagesData.data);
       if (requestsData.success) setMyRequests(requestsData.data);
     } catch (error) {
@@ -511,8 +544,75 @@ export default function Home() {
               </h2>
               <HelpTip content="【権限レベル】閲覧：申請してダウンロード可能 / DL可：直接ダウンロード可能 / 編集可：画像の編集・削除も可能。権限はフォルダまたは画像ごとに設定されています。" />
             </div>
-            {images.length > 0 ? (
+
+            {/* パンくずリスト */}
+            <div className="flex items-center gap-1 mb-4 text-sm overflow-x-auto pb-2 bg-gray-100 rounded-lg px-3 py-2">
+              <button
+                onClick={() => setCurrentFolderId(null)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md whitespace-nowrap ${
+                  !currentFolderId
+                    ? 'bg-blue-600 text-white font-medium shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+                }`}
+              >
+                🏠 ルート
+              </button>
+              {breadcrumbs.map((folder, index) => (
+                <span key={folder.id} className="flex items-center gap-1">
+                  <span className="text-gray-400 mx-1">›</span>
+                  <button
+                    onClick={() => setCurrentFolderId(folder.id)}
+                    className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
+                      index === breadcrumbs.length - 1
+                        ? 'bg-blue-600 text-white font-medium shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+                    }`}
+                  >
+                    📁 {folder.name}
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {folders.length > 0 || images.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
+                {/* フォルダ表示 */}
+                {folders.map((folder) => (
+                  <div
+                    key={`folder-${folder.id}`}
+                    onClick={() => setCurrentFolderId(folder.id)}
+                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                  >
+                    <div className="aspect-square bg-gray-50 flex items-center justify-center">
+                      <span className="text-6xl">📁</span>
+                    </div>
+                    <div className="p-2 sm:p-3">
+                      <p className="text-xs sm:text-sm text-gray-900 font-medium truncate">
+                        {folder.name}
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-gray-500">フォルダ</p>
+                        {folder.permission_level === 'edit' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-purple-500 text-white rounded">
+                            編集可
+                          </span>
+                        )}
+                        {folder.permission_level === 'download' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-green-500 text-white rounded">
+                            DL可
+                          </span>
+                        )}
+                        {folder.permission_level === 'view' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-gray-500 text-white rounded">
+                            閲覧
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* 画像表示 */}
                 {images.map((image) => (
                   <div
                     key={image.id}
@@ -577,7 +677,7 @@ export default function Home() {
                       </p>
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-xs text-gray-500">
-                          {image.folder?.name || 'ルート'}
+                          {isVideo(image) ? '動画' : '画像'}
                         </p>
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelectedImage(image); }}
@@ -596,7 +696,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">
-                利用可能な画像がありません。
+                {currentFolderId ? 'このフォルダには画像がありません。' : '利用可能な画像がありません。'}
                 <br />
                 管理者にアクセス権限を申請してください。
               </div>

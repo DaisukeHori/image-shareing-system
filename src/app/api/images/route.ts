@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 
@@ -12,6 +12,8 @@ interface ImageData {
   storage_path: string;
   folder_id: string | null;
   folder: { id: string; name: string } | null;
+  file_type?: 'image' | 'video';
+  mime_type?: string;
 }
 
 interface ImageWithLevel extends ImageData {
@@ -19,7 +21,7 @@ interface ImageWithLevel extends ImageData {
 }
 
 // ユーザーがアクセス可能な画像一覧
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -31,6 +33,10 @@ export async function GET() {
 
     const supabase = createServiceClient();
     const userId = session.user.id;
+
+    // クエリパラメータからフォルダIDを取得
+    const searchParams = request.nextUrl.searchParams;
+    const filterFolderId = searchParams.get('folder_id'); // nullまたはフォルダID
 
     // 1. 画像単位の権限を持つ画像を取得（権限レベル付き）
     // まずlevelカラムありで試す
@@ -159,7 +165,18 @@ export async function GET() {
       }
     });
 
-    const images = Array.from(imagesMap.values());
+    let images = Array.from(imagesMap.values());
+
+    // フォルダIDでフィルタリング
+    if (filterFolderId !== null) {
+      if (filterFolderId === 'null' || filterFolderId === '') {
+        // ルートフォルダ（フォルダなし）の画像のみ
+        images = images.filter((img) => img.folder_id === null);
+      } else {
+        // 指定されたフォルダ内の画像のみ
+        images = images.filter((img) => img.folder_id === filterFolderId);
+      }
+    }
 
     return NextResponse.json({ success: true, data: images });
   } catch (error) {
