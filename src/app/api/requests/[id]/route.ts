@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { auth } from '@/lib/auth';
+import { createServiceClient } from '@/lib/supabase/server';
 
 // 申請キャンセル（削除）
 export async function DELETE(
@@ -22,6 +17,7 @@ export async function DELETE(
     }
 
     const { id: requestId } = await params;
+    const supabase = createServiceClient();
 
     // ユーザー情報を取得
     const { data: user, error: userError } = await supabase

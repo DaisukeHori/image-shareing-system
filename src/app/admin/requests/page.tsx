@@ -66,6 +66,7 @@ export default function RequestsPage() {
   const [approverComment, setApproverComment] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [detailModal, setDetailModal] = useState<ApprovalRequest | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; filename: string } | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -257,7 +258,11 @@ export default function RequestsPage() {
                     <img
                       src={getImageUrl(request.image.storage_path)}
                       alt=""
-                      className="w-10 h-10 rounded object-cover"
+                      className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setPreviewImage({
+                        url: getImageUrl(request.image.storage_path),
+                        filename: request.image.original_filename
+                      })}
                     />
                     <span className="ml-2 text-sm text-gray-500 max-w-[100px] truncate">
                       {request.image.original_filename}
@@ -371,7 +376,7 @@ export default function RequestsPage() {
 
       {/* 承認モーダル */}
       {approveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               申請を承認 - {approveModal.requestNumber}
@@ -421,7 +426,7 @@ export default function RequestsPage() {
 
       {/* 却下理由モーダル */}
       {rejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               申請を却下 - {rejectModal.requestNumber}
@@ -484,7 +489,7 @@ export default function RequestsPage() {
 
       {/* 詳細モーダル */}
       {detailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">
@@ -582,6 +587,32 @@ export default function RequestsPage() {
                 閉じる
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 画像プレビューモーダル */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-10"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="max-w-full max-h-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={previewImage.url}
+              alt={previewImage.filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+            <p className="mt-4 text-white text-sm text-center">{previewImage.filename}</p>
           </div>
         </div>
       )}

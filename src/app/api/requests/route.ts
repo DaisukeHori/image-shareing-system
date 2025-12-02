@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
-import { sendApprovalRequestEmail } from '@/lib/email';
+import { sendApprovalRequestEmail, sendRequestConfirmationEmail } from '@/lib/email';
 
 // ユーザーの申請一覧取得
 export async function GET() {
@@ -180,7 +180,15 @@ export async function POST(request: NextRequest) {
     try {
       await sendApprovalRequestEmail(newRequest, session.user);
     } catch (emailError) {
-      console.error('Failed to send email:', emailError);
+      console.error('Failed to send approval request email:', emailError);
+      // メール送信失敗でも申請自体は成功させる
+    }
+
+    // 申請者に確認メールを送信
+    try {
+      await sendRequestConfirmationEmail(newRequest, session.user);
+    } catch (emailError) {
+      console.error('Failed to send confirmation email:', emailError);
       // メール送信失敗でも申請自体は成功させる
     }
 
