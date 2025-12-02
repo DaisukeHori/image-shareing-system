@@ -287,7 +287,7 @@ export default function DepartmentsPage() {
 
       {/* モーダル */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
               {editingDepartment ? '所属を編集' : '新規所属'}
