@@ -430,7 +430,7 @@ export default function Home() {
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
                   placeholder="例：店舗のSNS投稿用として使用します"
                   required
                 />
