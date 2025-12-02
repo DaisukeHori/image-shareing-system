@@ -52,6 +52,8 @@ export default function ImagesPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [draggingImageId, setDraggingImageId] = useState<string | null>(null);
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | 'root'>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -428,6 +430,59 @@ export default function ImagesPage() {
     }
   }
 
+  async function handleMoveImage(imageId: string, targetFolderId: string | null) {
+    try {
+      const res = await fetch(`/api/admin/images/${imageId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder_id: targetFolderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert(data.error || '移動に失敗しました');
+      }
+    } catch (error) {
+      console.error('Failed to move image:', error);
+      alert('画像の移動に失敗しました');
+    }
+  }
+
+  function handleImageDragStart(e: React.DragEvent, imageId: string) {
+    setDraggingImageId(imageId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', imageId);
+  }
+
+  function handleImageDragEnd() {
+    setDraggingImageId(null);
+    setDropTargetFolderId(null);
+  }
+
+  function handleFolderDragOver(e: React.DragEvent, folderId: string | null) {
+    if (!draggingImageId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTargetFolderId(folderId === null ? 'root' : folderId);
+  }
+
+  function handleFolderDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTargetFolderId(null);
+  }
+
+  function handleFolderDrop(e: React.DragEvent, targetFolderId: string | null) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggingImageId) {
+      handleMoveImage(draggingImageId, targetFolderId);
+    }
+    setDraggingImageId(null);
+    setDropTargetFolderId(null);
+  }
+
   function openPermissionModal(image: Image) {
     setSelectedImage(image);
     setSelectedUserIds(image.permissions?.map(p => p.user_id) || []);
@@ -581,7 +636,12 @@ export default function ImagesPage() {
       <div className="flex items-center gap-2 mb-4 text-sm overflow-x-auto pb-2">
         <button
           onClick={() => setCurrentFolderId(null)}
-          className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap ${!currentFolderId ? 'font-bold text-blue-600' : 'text-gray-600'}`}
+          onDragOver={(e) => handleFolderDragOver(e, null)}
+          onDragLeave={handleFolderDragLeave}
+          onDrop={(e) => handleFolderDrop(e, null)}
+          className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap transition-all ${
+            !currentFolderId ? 'font-bold text-blue-600' : 'text-gray-600'
+          } ${dropTargetFolderId === 'root' ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
         >
           🏠 ルート
         </button>
@@ -590,7 +650,12 @@ export default function ImagesPage() {
             <span className="text-gray-400">/</span>
             <button
               onClick={() => setCurrentFolderId(folder.id)}
-              className={`px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap ${index === breadcrumbs.length - 1 ? 'font-bold text-blue-600' : 'text-gray-600'}`}
+              onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+              onDragLeave={handleFolderDragLeave}
+              onDrop={(e) => handleFolderDrop(e, folder.id)}
+              className={`px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap transition-all ${
+                index === breadcrumbs.length - 1 ? 'font-bold text-blue-600' : 'text-gray-600'
+              } ${dropTargetFolderId === folder.id ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
             >
               📁 {folder.name}
             </button>
@@ -620,13 +685,18 @@ export default function ImagesPage() {
           {folders.map((folder) => (
             <div
               key={`folder-${folder.id}`}
-              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer group"
+              className={`bg-white rounded-lg shadow hover:shadow-md transition-all cursor-pointer group ${
+                dropTargetFolderId === folder.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+              }`}
+              onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+              onDragLeave={handleFolderDragLeave}
+              onDrop={(e) => handleFolderDrop(e, folder.id)}
             >
               <div
                 onClick={() => setCurrentFolderId(folder.id)}
                 className="p-4 text-center"
               >
-                <div className="text-5xl mb-2">📁</div>
+                <div className="text-5xl mb-2">{dropTargetFolderId === folder.id ? '📂' : '📁'}</div>
                 <p className="text-sm font-medium text-gray-900 truncate">{folder.name}</p>
               </div>
               <div className="px-2 pb-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -655,13 +725,18 @@ export default function ImagesPage() {
           {images.map((image) => (
             <div
               key={`image-${image.id}`}
-              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow group"
+              draggable
+              onDragStart={(e) => handleImageDragStart(e, image.id)}
+              onDragEnd={handleImageDragEnd}
+              className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing ${
+                draggingImageId === image.id ? 'opacity-50 ring-2 ring-blue-500' : ''
+              }`}
             >
               <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-100">
                 <img
                   src={getImageUrl(image.storage_path)}
                   alt={image.original_filename}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover pointer-events-none"
                 />
               </div>
               <div className="p-2">
@@ -711,12 +786,17 @@ export default function ImagesPage() {
               {folders.map((folder) => (
                 <tr
                   key={`folder-${folder.id}`}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className={`hover:bg-gray-50 cursor-pointer transition-all ${
+                    dropTargetFolderId === folder.id ? 'bg-blue-50 ring-2 ring-inset ring-blue-500' : ''
+                  }`}
                   onClick={() => setCurrentFolderId(folder.id)}
+                  onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+                  onDragLeave={handleFolderDragLeave}
+                  onDrop={(e) => handleFolderDrop(e, folder.id)}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">📁</span>
+                      <span className="text-xl">{dropTargetFolderId === folder.id ? '📂' : '📁'}</span>
                       <span className="text-sm font-medium text-gray-900">{folder.name}</span>
                     </div>
                   </td>
@@ -739,13 +819,21 @@ export default function ImagesPage() {
                 </tr>
               ))}
               {images.map((image) => (
-                <tr key={`image-${image.id}`} className="hover:bg-gray-50">
+                <tr
+                  key={`image-${image.id}`}
+                  draggable
+                  onDragStart={(e) => handleImageDragStart(e, image.id)}
+                  onDragEnd={handleImageDragEnd}
+                  className={`hover:bg-gray-50 cursor-grab active:cursor-grabbing ${
+                    draggingImageId === image.id ? 'opacity-50 bg-blue-50' : ''
+                  }`}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <img
                         src={getImageUrl(image.storage_path)}
                         alt=""
-                        className="w-8 h-8 object-cover rounded"
+                        className="w-8 h-8 object-cover rounded pointer-events-none"
                       />
                       <span className="text-sm text-gray-900 truncate max-w-[150px] sm:max-w-none">
                         {image.original_filename}
