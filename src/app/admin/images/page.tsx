@@ -63,6 +63,7 @@ export default function ImagesPage() {
   const [showUploadMenu, setShowUploadMenu] = useState(false);
   const [moving, setMoving] = useState(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -447,9 +448,39 @@ export default function ImagesPage() {
     return results;
   }
 
+  // 対応ファイル形式
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+  const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
+
+  function isAllowedFile(file: File): boolean {
+    return allowedTypes.includes(file.type) || file.type.startsWith('image/') || file.type.startsWith('video/');
+  }
+
   async function uploadFiles(files: File[]) {
+    // クライアント側でファイルをフィルタリング
+    const validFiles: File[] = [];
+    const skipped: string[] = [];
+
+    for (const file of files) {
+      if (isAllowedFile(file)) {
+        validFiles.push(file);
+      } else {
+        skipped.push(`${file.name} (${file.type || '不明な形式'})`);
+      }
+    }
+
+    setSkippedFiles(skipped);
+
+    if (validFiles.length === 0) {
+      if (skipped.length > 0) {
+        setUploadErrors([`対応形式のファイルがありませんでした。対応形式: 画像(JPEG, PNG, WebP, GIF) / 動画(MP4, WebM, MOV, AVI, MKV)`]);
+      }
+      return;
+    }
+
     setUploading(true);
-    setUploadProgress({ current: 0, total: files.length });
+    setUploadProgress({ current: 0, total: validFiles.length });
     setUploadErrors([]);
     const errors: string[] = [];
     let completedCount = 0;
@@ -476,6 +507,20 @@ export default function ImagesPage() {
 
         clearTimeout(timeoutId);
 
+        // レスポンスがJSONかどうかをチェック
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          // サーバーがHTMLエラーを返した場合
+          if (res.status === 413) {
+            errors.push(`${file.name}: ファイルサイズが大きすぎます（サーバー制限超過）`);
+          } else if (res.status === 504 || res.status === 502) {
+            errors.push(`${file.name}: サーバーがタイムアウトしました`);
+          } else {
+            errors.push(`${file.name}: サーバーエラー (${res.status})`);
+          }
+          return;
+        }
+
         const data = await res.json();
         if (!data.success) {
           const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
@@ -487,6 +532,8 @@ export default function ImagesPage() {
         if (fetchError instanceof Error) {
           if (fetchError.name === 'AbortError') {
             errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
+          } else if (fetchError.message.includes('Unexpected token')) {
+            errorMsg += 'サーバーエラー（ファイルサイズが大きすぎる可能性）';
           } else {
             errorMsg += fetchError.message || 'ネットワークエラー';
           }
@@ -497,15 +544,15 @@ export default function ImagesPage() {
         errors.push(errorMsg);
       } finally {
         completedCount++;
-        setUploadProgress({ current: completedCount, total: files.length });
+        setUploadProgress({ current: completedCount, total: validFiles.length });
       }
     }
 
     try {
       // 並列アップロード（同時5ファイル）で高速化
       const CONCURRENCY = 5;
-      for (let i = 0; i < files.length; i += CONCURRENCY) {
-        const batch = files.slice(i, i + CONCURRENCY);
+      for (let i = 0; i < validFiles.length; i += CONCURRENCY) {
+        const batch = validFiles.slice(i, i + CONCURRENCY);
         await Promise.all(batch.map(uploadSingleFile));
       }
 
@@ -523,8 +570,29 @@ export default function ImagesPage() {
   }
 
   async function uploadFolderFiles(folderFiles: { folderName: string; file: File }[]) {
-    const folderGroups = new Map<string, File[]>();
+    // クライアント側でファイルをフィルタリング
+    const validFolderFiles: { folderName: string; file: File }[] = [];
+    const skipped: string[] = [];
+
     for (const { folderName: fName, file } of folderFiles) {
+      if (isAllowedFile(file)) {
+        validFolderFiles.push({ folderName: fName, file });
+      } else {
+        skipped.push(`${file.name} (${file.type || '不明な形式'})`);
+      }
+    }
+
+    setSkippedFiles(skipped);
+
+    if (validFolderFiles.length === 0) {
+      if (skipped.length > 0) {
+        setUploadErrors([`対応形式のファイルがありませんでした。対応形式: 画像(JPEG, PNG, WebP, GIF) / 動画(MP4, WebM, MOV, AVI, MKV)`]);
+      }
+      return;
+    }
+
+    const folderGroups = new Map<string, File[]>();
+    for (const { folderName: fName, file } of validFolderFiles) {
       if (!folderGroups.has(fName)) {
         folderGroups.set(fName, []);
       }
@@ -534,7 +602,7 @@ export default function ImagesPage() {
     setUploading(true);
     setUploadErrors([]);
     const errors: string[] = [];
-    const totalFiles = folderFiles.length;
+    const totalFiles = validFolderFiles.length;
     let completedCount = 0;
     setUploadProgress({ current: 0, total: totalFiles });
 
@@ -560,6 +628,20 @@ export default function ImagesPage() {
 
         clearTimeout(timeoutId);
 
+        // レスポンスがJSONかどうかをチェック
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          // サーバーがHTMLエラーを返した場合
+          if (res.status === 413) {
+            errors.push(`${file.name}: ファイルサイズが大きすぎます（サーバー制限超過）`);
+          } else if (res.status === 504 || res.status === 502) {
+            errors.push(`${file.name}: サーバーがタイムアウトしました`);
+          } else {
+            errors.push(`${file.name}: サーバーエラー (${res.status})`);
+          }
+          return;
+        }
+
         const data = await res.json();
         if (!data.success) {
           const errorMsg = `${file.name}: ${data.error || 'アップロード失敗'}`;
@@ -571,6 +653,8 @@ export default function ImagesPage() {
         if (fetchError instanceof Error) {
           if (fetchError.name === 'AbortError') {
             errorMsg += 'タイムアウト（ファイルが大きすぎる可能性があります）';
+          } else if (fetchError.message.includes('Unexpected token')) {
+            errorMsg += 'サーバーエラー（ファイルサイズが大きすぎる可能性）';
           } else {
             errorMsg += fetchError.message || 'ネットワークエラー';
           }
@@ -643,12 +727,11 @@ export default function ImagesPage() {
     const pathParts = firstFile.webkitRelativePath.split('/');
     const fName = pathParts[0];
 
+    // すべてのファイルをuploadFolderFilesに渡し、フィルタリングはそこで行う
     const folderFilesList: { folderName: string; file: File }[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-        folderFilesList.push({ folderName: fName, file });
-      }
+      folderFilesList.push({ folderName: fName, file });
     }
 
     if (folderFilesList.length > 0) {
@@ -1120,6 +1203,34 @@ export default function ImagesPage() {
           </span>
         ))}
       </div>
+
+      {/* スキップされたファイル通知 */}
+      {skippedFiles.length > 0 && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-yellow-700">
+              スキップしたファイル ({skippedFiles.length}件)
+            </span>
+            <button
+              onClick={() => setSkippedFiles([])}
+              className="text-xs text-yellow-600 hover:text-yellow-800"
+            >
+              閉じる
+            </button>
+          </div>
+          <p className="text-xs text-yellow-600 mb-2">
+            対応形式: 画像(JPEG, PNG, WebP, GIF) / 動画(MP4, WebM, MOV, AVI, MKV)
+          </p>
+          <div className="max-h-32 overflow-y-auto text-xs text-yellow-700 space-y-1">
+            {skippedFiles.map((file, i) => (
+              <div key={i} className="flex items-start gap-1">
+                <span className="text-yellow-400">•</span>
+                <span>{file}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* アップロードエラー表示 */}
       {uploadErrors.length > 0 && (
