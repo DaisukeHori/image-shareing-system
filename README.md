@@ -8,16 +8,32 @@
 - **Azure AD (Microsoft Entra ID) SSO認証**: Office 365アカウントでログイン
 - **不可視電子透かし**: LSBステガノグラフィーによる透かし埋め込み（流出時の追跡用）
 
-### 画像管理
-- **フォルダ管理**: 階層構造でのフォルダ管理
+### 画像・動画管理
+- **対応形式**:
+  - 画像: JPEG, PNG, WebP, GIF（最大10MB）
+  - 動画: MP4, WebM, MOV, AVI, MKV（最大500MB）
+- **フォルダ管理**: 無制限の階層構造
 - **フォルダごと一括アップロード**: ローカルフォルダをそのままアップロード
 - **複数選択**: 複数画像を選んで一括で権限設定・削除
-- **アクセス権限設定**: 個別画像単位またはフォルダ単位で設定可能
+- **権限レベル**:
+  - `view`: 閲覧のみ（申請してダウンロード）
+  - `download`: 直接ダウンロード可能
+  - `edit`: 編集・削除可能
 
 ### 承認ワークフロー
+- **利用規約同意**: 申請時にレンタルフォト使用同意書への同意が必須
+- **利用目的選択**: ホットペッパー/HP/SNS/チラシ/その他
+- **掲載終了日設定**: 1年以内で設定必須
 - **並列承認**: 所属長または社長のどちらかが承認すればOK
+- **管理画面からの承認**: メールだけでなく管理画面からも直接承認・却下可能
+- **コメント機能**: 申請時・承認/却下時に相互コメント可能
 - **メール通知**: 承認依頼・承認結果をメールで通知
 - **ダウンロード制限**: 承認後7日間、1回のみ
+
+### 削除確認ワークフロー
+- **自動リマインダー**: 掲載終了日を過ぎると毎日14時(JST)にリマインダーメール送信
+- **両者確認必須**: 申請者と承認者の両方が削除確認するまで継続
+- **トークンベース**: メールリンクから簡単に確認可能
 
 ### ユーザー・所属管理
 - **CSVインポート/エクスポート**: ユーザー・所属の一括登録・更新
@@ -26,6 +42,7 @@
 ### UI/UX
 - **レスポンシブ対応**: PC・タブレット・スマホに最適化
 - **ヘルプTips**: 各項目にヘルプアイコン付き（初めての方も安心）
+- **プレビュー機能**: スワイプ・矢印キーでの画像ナビゲーション
 
 ---
 
@@ -83,7 +100,12 @@
 6. 右下の **「Run」** ボタン（緑色）をクリック
 7. 「Success」と表示されれば完了
 
-8. 続けて `supabase/migrations/002_folder_permissions.sql` も同様に実行
+8. 続けて以下のマイグレーションファイルも**順番に**実行：
+   - `supabase/migrations/002_folder_permissions.sql` - フォルダ権限機能
+   - `supabase/migrations/003_permission_levels.sql` - 権限レベル機能（view/download/edit）
+   - `supabase/migrations/004_video_support.sql` - 動画サポート
+   - `supabase/migrations/005_usage_consent.sql` - 利用同意・削除確認機能
+   - `supabase/migrations/006_comments.sql` - コメント機能
 
 **確認方法：**
 - 左メニューの **「Table Editor」** をクリック
@@ -268,8 +290,9 @@ service_role key:   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...（長い文字列）
 | `SENDGRID_API_KEY` | SendGridのAPIキー（`SG.xxx...`） |
 | `SENDGRID_FROM_EMAIL` | SendGridで認証したメールアドレス |
 | `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app`（後で設定） |
+| `CRON_SECRET` | Vercel Cronの認証用シークレット（下記で生成） |
 
-**AUTH_SECRETの生成方法：**
+**AUTH_SECRET / CRON_SECRETの生成方法：**
 
 ターミナル（コマンドプロンプト）で以下のコマンドを実行：
 ```bash
@@ -278,6 +301,8 @@ openssl rand -base64 32
 
 Windowsの場合やopensslがない場合は、以下のWebサイトで生成できます：
 - https://generate-secret.vercel.app/32
+
+**注意**: AUTH_SECRETとCRON_SECRETは**別々の値**を生成して設定してください。
 
 ### 4.3 デプロイ実行
 
@@ -366,6 +391,40 @@ Windowsの場合やopensslがない場合は、以下のWebサイトで生成で
 - usersテーブルのemailが小文字か確認
 - is_activeがtrueか確認
 - Azure ADのリダイレクトURIが正しいか確認
+
+---
+
+## Step 6: Cronジョブの設定（削除確認リマインダー）
+
+掲載終了日を過ぎた申請に対して自動リマインダーメールを送信するCronジョブが設定されています。
+
+### 6.1 Vercel Cronの設定
+
+`vercel.json` ファイルに以下の設定が含まれています：
+
+```json
+{
+  "crons": [{
+    "path": "/api/cron/deletion-reminder",
+    "schedule": "0 5 * * *"
+  }]
+}
+```
+
+これにより毎日UTC 5:00（日本時間14:00）にリマインダーが送信されます。
+
+### 6.2 環境変数の確認
+
+必ず `CRON_SECRET` 環境変数が設定されていることを確認してください。この値がないとCronジョブは認証エラーで失敗します。
+
+### 6.3 手動実行（テスト用）
+
+Cronジョブを手動でテストする場合：
+
+```bash
+curl -X GET "https://your-app.vercel.app/api/cron/deletion-reminder" \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
 
 ---
 
@@ -532,8 +591,9 @@ npm test -- --testPathPatterns="integration"
 ```
 
 テスト件数：
-- 単体テスト: 33件
+- 単体テスト: 35件
 - 結合テスト: 104件
+- 合計: 139件
 
 ---
 

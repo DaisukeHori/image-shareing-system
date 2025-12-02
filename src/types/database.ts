@@ -2,6 +2,7 @@
 
 export type UserRole = 'admin' | 'user';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'downloaded';
+export type PurposeType = 'hotpepper' | 'website' | 'sns' | 'print' | 'other';
 
 export interface Department {
   id: string;
@@ -40,6 +41,8 @@ export interface FolderWithChildren extends Folder {
   children?: FolderWithChildren[];
 }
 
+export type FileType = 'image' | 'video';
+
 export interface Image {
   id: string;
   folder_id: string | null;
@@ -50,6 +53,8 @@ export interface Image {
   mime_type: string | null;
   width: number | null;
   height: number | null;
+  file_type: FileType;
+  duration: number | null; // 動画の長さ（秒）
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +72,12 @@ export interface ApprovalRequest {
   user_id: string;
   image_id: string;
   purpose: string;
+  purpose_type: PurposeType | null;
+  purpose_other: string | null;
+  usage_end_date: string | null;
+  agreed_to_terms: boolean;
+  requester_comment: string | null;
+  approver_comment: string | null;
   status: ApprovalStatus;
   approved_by: string | null;
   approved_at: string | null;
@@ -76,6 +87,11 @@ export interface ApprovalRequest {
   expires_at: string | null;
   downloaded_at: string | null;
   download_count: number;
+  deletion_confirmed_user: boolean;
+  deletion_confirmed_user_at: string | null;
+  deletion_confirmed_approver: boolean;
+  deletion_confirmed_approver_at: string | null;
+  deletion_reminder_sent_at: string | null;
   created_at: string;
   updated_at: string;
 }

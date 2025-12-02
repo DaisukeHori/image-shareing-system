@@ -30,7 +30,8 @@ export async function GET(
           id,
           original_filename,
           storage_path,
-          mime_type
+          mime_type,
+          file_type
         ),
         approver:users!approval_requests_approved_by_fkey (
           id,
@@ -88,29 +89,25 @@ export async function GET(
       );
     }
 
-    // Storageから画像を取得
-    const { data: imageData, error: downloadError } = await supabase.storage
+    // Storageからファイルを取得
+    const { data: fileData, error: downloadError } = await supabase.storage
       .from('images')
       .download(approvalRequest.image.storage_path);
 
-    if (downloadError || !imageData) {
+    if (downloadError || !fileData) {
       console.error('Storage download error:', downloadError);
       return NextResponse.json(
-        { success: false, error: '画像の取得に失敗しました' },
+        { success: false, error: 'ファイルの取得に失敗しました' },
         { status: 500 }
       );
     }
 
-    // 画像バッファを取得
-    const imageBuffer = Buffer.from(await imageData.arrayBuffer());
+    // ファイルバッファを取得
+    const fileBuffer = Buffer.from(await fileData.arrayBuffer());
 
-    // 電子透かしを追加
-    const watermarkedImage = await addWatermark(imageBuffer, {
-      downloaderName: session.user.name,
-      approverName: approvalRequest.approver?.name || '不明',
-      requestId: approvalRequest.request_number,
-      downloadDate: format(new Date(), 'yyyy/MM/dd HH:mm', { locale: ja }),
-    });
+    // 動画かどうかを判定
+    const isVideo = approvalRequest.image.file_type === 'video' ||
+                    approvalRequest.image.mime_type?.startsWith('video/');
 
     // ダウンロード回数を更新し、ステータスを変更
     await supabase
@@ -122,19 +119,43 @@ export async function GET(
       })
       .eq('id', requestId);
 
-    // ファイル名を生成（PNG形式で出力）
     const originalFilename = approvalRequest.image.original_filename;
     const baseName = originalFilename.replace(/\.[^/.]+$/, '');
-    const downloadFilename = `${approvalRequest.request_number}_${baseName}.png`;
 
-    // 画像を返す（不可視透かし保持のためPNG形式）
-    return new NextResponse(new Uint8Array(watermarkedImage), {
-      headers: {
-        'Content-Type': 'image/png',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
-        'Cache-Control': 'no-store',
-      },
-    });
+    if (isVideo) {
+      // 動画の場合は電子透かしなしでそのまま返す
+      const ext = originalFilename.split('.').pop() || 'mp4';
+      const downloadFilename = `${approvalRequest.request_number}_${baseName}.${ext}`;
+      const mimeType = approvalRequest.image.mime_type || 'video/mp4';
+
+      return new NextResponse(new Uint8Array(fileBuffer), {
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    } else {
+      // 画像の場合は電子透かしを追加
+      const watermarkedImage = await addWatermark(fileBuffer, {
+        downloaderName: session.user.name,
+        approverName: approvalRequest.approver?.name || '不明',
+        requestId: approvalRequest.request_number,
+        downloadDate: format(new Date(), 'yyyy/MM/dd HH:mm', { locale: ja }),
+      });
+
+      // ファイル名を生成（PNG形式で出力）
+      const downloadFilename = `${approvalRequest.request_number}_${baseName}.png`;
+
+      // 画像を返す（不可視透かし保持のためPNG形式）
+      return new NextResponse(new Uint8Array(watermarkedImage), {
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
   } catch (error) {
     console.error('Download error:', error);
     return NextResponse.json(

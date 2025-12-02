@@ -141,6 +141,8 @@ describe('Database Types', () => {
         mime_type: 'image/jpeg',
         width: 1920,
         height: 1080,
+        file_type: 'image',
+        duration: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T00:00:00Z',
       };
@@ -148,6 +150,28 @@ describe('Database Types', () => {
       expect(image.filename).toBe('abc123.jpg');
       expect(image.original_filename).toBe('photo.jpg');
       expect(image.mime_type).toBe('image/jpeg');
+      expect(image.file_type).toBe('image');
+    });
+
+    it('should support video files', () => {
+      const video: Image = {
+        id: 'vid-id',
+        folder_id: 'folder-id',
+        filename: 'video123.mp4',
+        original_filename: 'sample.mp4',
+        storage_path: 'videos/video123.mp4',
+        file_size: 50000000,
+        mime_type: 'video/mp4',
+        width: 1920,
+        height: 1080,
+        file_type: 'video',
+        duration: 120,
+        created_at: '2024-12-02T00:00:00Z',
+        updated_at: '2024-12-02T00:00:00Z',
+      };
+
+      expect(video.file_type).toBe('video');
+      expect(video.duration).toBe(120);
     });
   });
 
@@ -159,6 +183,12 @@ describe('Database Types', () => {
         user_id: 'user-id',
         image_id: 'img-id',
         purpose: 'SNS投稿用',
+        purpose_type: 'sns',
+        purpose_other: null,
+        usage_end_date: '2025-06-02',
+        agreed_to_terms: true,
+        requester_comment: '急ぎでお願いします',
+        approver_comment: null,
         status: 'pending',
         approved_by: null,
         approved_at: null,
@@ -168,12 +198,19 @@ describe('Database Types', () => {
         expires_at: null,
         downloaded_at: null,
         download_count: 0,
+        deletion_confirmed_user: false,
+        deletion_confirmed_user_at: null,
+        deletion_confirmed_approver: false,
+        deletion_confirmed_approver_at: null,
+        deletion_reminder_sent_at: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T00:00:00Z',
       };
 
       expect(request.status).toBe('pending');
       expect(request.download_count).toBe(0);
+      expect(request.purpose_type).toBe('sns');
+      expect(request.agreed_to_terms).toBe(true);
     });
 
     it('should update on approval', () => {
@@ -183,6 +220,12 @@ describe('Database Types', () => {
         user_id: 'user-id',
         image_id: 'img-id',
         purpose: 'SNS投稿用',
+        purpose_type: 'sns',
+        purpose_other: null,
+        usage_end_date: '2025-06-02',
+        agreed_to_terms: true,
+        requester_comment: null,
+        approver_comment: '承認しました。利用規約を守ってください。',
         status: 'approved',
         approved_by: 'approver-id',
         approved_at: '2024-12-02T10:00:00Z',
@@ -192,6 +235,11 @@ describe('Database Types', () => {
         expires_at: '2024-12-09T10:00:00Z',
         downloaded_at: null,
         download_count: 0,
+        deletion_confirmed_user: false,
+        deletion_confirmed_user_at: null,
+        deletion_confirmed_approver: false,
+        deletion_confirmed_approver_at: null,
+        deletion_reminder_sent_at: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T10:00:00Z',
       };
@@ -208,6 +256,12 @@ describe('Database Types', () => {
         user_id: 'user-id',
         image_id: 'img-id',
         purpose: 'SNS投稿用',
+        purpose_type: 'sns',
+        purpose_other: null,
+        usage_end_date: '2025-06-02',
+        agreed_to_terms: true,
+        requester_comment: null,
+        approver_comment: null,
         status: 'downloaded',
         approved_by: 'approver-id',
         approved_at: '2024-12-02T10:00:00Z',
@@ -217,6 +271,11 @@ describe('Database Types', () => {
         expires_at: '2024-12-09T10:00:00Z',
         downloaded_at: '2024-12-02T11:00:00Z',
         download_count: 1,
+        deletion_confirmed_user: false,
+        deletion_confirmed_user_at: null,
+        deletion_confirmed_approver: false,
+        deletion_confirmed_approver_at: null,
+        deletion_reminder_sent_at: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T11:00:00Z',
       };
@@ -224,6 +283,43 @@ describe('Database Types', () => {
       expect(request.status).toBe('downloaded');
       expect(request.download_count).toBe(1);
       expect(request.downloaded_at).not.toBeNull();
+    });
+
+    it('should track deletion confirmation', () => {
+      const request: ApprovalRequest = {
+        id: 'req-id',
+        request_number: 'REQ-20241202-0001',
+        user_id: 'user-id',
+        image_id: 'img-id',
+        purpose: 'その他: テスト利用',
+        purpose_type: 'other',
+        purpose_other: 'テスト利用',
+        usage_end_date: '2024-11-01',
+        agreed_to_terms: true,
+        requester_comment: 'テスト用に使います',
+        approver_comment: 'テスト利用を承認しました',
+        status: 'downloaded',
+        approved_by: 'approver-id',
+        approved_at: '2024-12-02T10:00:00Z',
+        rejected_by: null,
+        rejected_at: null,
+        rejection_reason: null,
+        expires_at: '2024-12-09T10:00:00Z',
+        downloaded_at: '2024-12-02T11:00:00Z',
+        download_count: 1,
+        deletion_confirmed_user: true,
+        deletion_confirmed_user_at: '2024-11-02T10:00:00Z',
+        deletion_confirmed_approver: true,
+        deletion_confirmed_approver_at: '2024-11-02T11:00:00Z',
+        deletion_reminder_sent_at: '2024-11-02T05:00:00Z',
+        created_at: '2024-12-02T00:00:00Z',
+        updated_at: '2024-11-02T11:00:00Z',
+      };
+
+      expect(request.deletion_confirmed_user).toBe(true);
+      expect(request.deletion_confirmed_approver).toBe(true);
+      expect(request.purpose_type).toBe('other');
+      expect(request.purpose_other).toBe('テスト利用');
     });
   });
 

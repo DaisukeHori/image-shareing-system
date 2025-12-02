@@ -15,12 +15,19 @@ interface Image {
   storage_path: string;
 }
 
+type PurposeType = 'hotpepper' | 'website' | 'sns' | 'print' | 'other';
+
 interface ApprovalRequest {
   id: string;
   request_number: string;
   user: User;
   image: Image;
   purpose: string;
+  purpose_type: PurposeType | null;
+  purpose_other: string | null;
+  usage_end_date: string | null;
+  requester_comment: string | null;
+  approver_comment: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'expired' | 'downloaded';
   approver: { id: string; name: string } | null;
   approved_at: string | null;
@@ -28,8 +35,18 @@ interface ApprovalRequest {
   rejection_reason: string | null;
   expires_at: string | null;
   downloaded_at: string | null;
+  deletion_confirmed_user: boolean;
+  deletion_confirmed_approver: boolean;
   created_at: string;
 }
+
+const purposeTypeLabels: Record<PurposeType, string> = {
+  hotpepper: 'ホットペッパー',
+  website: 'HP/ブログ',
+  sns: 'SNS',
+  print: 'チラシ等',
+  other: 'その他',
+};
 
 const statusLabels: Record<string, { text: string; class: string }> = {
   pending: { text: '承認待ち', class: 'bg-yellow-100 text-yellow-800' },
@@ -43,6 +60,12 @@ export default function RequestsPage() {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [approveModal, setApproveModal] = useState<{ requestId: string; requestNumber: string; requesterComment: string | null } | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ requestId: string; requestNumber: string; requesterComment: string | null } | null>(null);
+  const [approverComment, setApproverComment] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [detailModal, setDetailModal] = useState<ApprovalRequest | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -66,8 +89,85 @@ export default function RequestsPage() {
     }
   }
 
+  async function handleApproveSubmit() {
+    if (!approveModal) return;
+
+    setActionLoading(approveModal.requestId);
+    try {
+      const res = await fetch('/api/admin/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: approveModal.requestId,
+          action: 'approve',
+          approverComment: approverComment.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('承認しました');
+        setApproveModal(null);
+        setApproverComment('');
+        fetchRequests();
+      } else {
+        alert(data.error || '承認に失敗しました');
+      }
+    } catch (error) {
+      console.error('Approve error:', error);
+      alert('承認に失敗しました');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReject() {
+    if (!rejectModal) return;
+    if (!rejectionReason.trim()) {
+      alert('却下理由を入力してください');
+      return;
+    }
+
+    setActionLoading(rejectModal.requestId);
+    try {
+      const res = await fetch('/api/admin/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: rejectModal.requestId,
+          action: 'reject',
+          rejectionReason,
+          approverComment: approverComment.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('却下しました');
+        setRejectModal(null);
+        setRejectionReason('');
+        setApproverComment('');
+        fetchRequests();
+      } else {
+        alert(data.error || '却下に失敗しました');
+      }
+    } catch (error) {
+      console.error('Reject error:', error);
+      alert('却下に失敗しました');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleString('ja-JP');
+  }
+
+  function formatDateOnly(dateString: string) {
+    return new Date(dateString).toLocaleDateString('ja-JP');
+  }
+
+  function isExpiredUsage(usageEndDate: string | null) {
+    if (!usageEndDate) return false;
+    return new Date(usageEndDate) < new Date();
   }
 
   function getImageUrl(storagePath: string) {
@@ -104,33 +204,47 @@ export default function RequestsPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 申請番号
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 申請者
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 画像
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 利用目的
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                掲載終了日
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ステータス
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 申請日時
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                操作
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {requests.map((request) => (
-              <tr key={request.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {request.request_number}
+              <tr key={request.id} className={isExpiredUsage(request.usage_end_date) && request.status === 'downloaded' ? 'bg-red-50' : ''}>
+                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <button
+                    onClick={() => setDetailModal(request)}
+                    className="hover:text-blue-600 hover:underline"
+                  >
+                    {request.request_number}
+                  </button>
+                  {request.requester_comment && (
+                    <span className="ml-1 text-blue-500" title="コメントあり">💬</span>
+                  )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
                     {request.user.name}
                   </div>
@@ -138,22 +252,53 @@ export default function RequestsPage() {
                     {request.user.department?.name || '未所属'}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <img
                       src={getImageUrl(request.image.storage_path)}
                       alt=""
                       className="w-10 h-10 rounded object-cover"
                     />
-                    <span className="ml-2 text-sm text-gray-500 max-w-[150px] truncate">
+                    <span className="ml-2 text-sm text-gray-500 max-w-[100px] truncate">
                       {request.image.original_filename}
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                  {request.purpose}
+                <td className="px-4 py-4">
+                  <div className="text-sm text-gray-900">
+                    {request.purpose_type ? purposeTypeLabels[request.purpose_type] : '-'}
+                  </div>
+                  {request.purpose_type === 'other' && request.purpose_other && (
+                    <div className="text-xs text-gray-500 truncate max-w-[150px]" title={request.purpose_other}>
+                      {request.purpose_other}
+                    </div>
+                  )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
+                  {request.usage_end_date ? (
+                    <div className={`text-sm ${isExpiredUsage(request.usage_end_date) ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
+                      {formatDateOnly(request.usage_end_date)}
+                      {isExpiredUsage(request.usage_end_date) && (
+                        <span className="block text-xs">期限切れ</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                  {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && (
+                    <div className="text-xs mt-1">
+                      {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
+                        <span className="text-green-600">削除確認済</span>
+                      ) : (
+                        <span className="text-red-600">
+                          {!request.deletion_confirmed_user && '本人未確認 '}
+                          {!request.deletion_confirmed_approver && '承認者未確認'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
                   <span
                     className={`px-2 py-1 text-xs rounded ${statusLabels[request.status].class}`}
                   >
@@ -164,15 +309,58 @@ export default function RequestsPage() {
                       承認: {request.approver.name}
                     </div>
                   )}
+                  {request.rejection_reason && (
+                    <div className="text-xs text-red-500 mt-1" title={request.rejection_reason}>
+                      理由: {request.rejection_reason.length > 20 ? request.rejection_reason.substring(0, 20) + '...' : request.rejection_reason}
+                    </div>
+                  )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(request.created_at)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  {request.status === 'pending' && (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setApproveModal({
+                            requestId: request.id,
+                            requestNumber: request.request_number,
+                            requesterComment: request.requester_comment,
+                          });
+                          setApproverComment('');
+                        }}
+                        disabled={actionLoading === request.id}
+                        className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {actionLoading === request.id ? '処理中...' : '承認'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRejectModal({
+                            requestId: request.id,
+                            requestNumber: request.request_number,
+                            requesterComment: request.requester_comment,
+                          });
+                          setRejectionReason('');
+                          setApproverComment('');
+                        }}
+                        disabled={actionLoading === request.id}
+                        className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+                      >
+                        却下
+                      </button>
+                    </div>
+                  )}
+                  {request.status !== 'pending' && (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
                 </td>
               </tr>
             ))}
             {requests.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                   申請がありません
                 </td>
               </tr>
@@ -180,6 +368,223 @@ export default function RequestsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* 承認モーダル */}
+      {approveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              申請を承認 - {approveModal.requestNumber}
+            </h3>
+
+            {approveModal.requesterComment && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs font-medium text-blue-700 mb-1">申請者からのコメント:</p>
+                <p className="text-sm text-blue-900">{approveModal.requesterComment}</p>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                申請者へのコメント（任意）
+              </label>
+              <textarea
+                value={approverComment}
+                onChange={(e) => setApproverComment(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                rows={3}
+                placeholder="承認に際して伝えたいことがあれば入力してください"
+                maxLength={500}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setApproveModal(null);
+                  setApproverComment('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleApproveSubmit}
+                disabled={actionLoading === approveModal.requestId}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {actionLoading === approveModal.requestId ? '処理中...' : '承認する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 却下理由モーダル */}
+      {rejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              申請を却下 - {rejectModal.requestNumber}
+            </h3>
+
+            {rejectModal.requesterComment && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs font-medium text-blue-700 mb-1">申請者からのコメント:</p>
+                <p className="text-sm text-blue-900">{rejectModal.requesterComment}</p>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                却下理由 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                rows={3}
+                placeholder="却下理由を入力してください"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                申請者へのコメント（任意）
+              </label>
+              <textarea
+                value={approverComment}
+                onChange={(e) => setApproverComment(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                rows={2}
+                placeholder="却下理由以外に伝えたいことがあれば入力してください"
+                maxLength={500}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectionReason('');
+                  setApproverComment('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={actionLoading === rejectModal.requestId}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {actionLoading === rejectModal.requestId ? '処理中...' : '却下する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 詳細モーダル */}
+      {detailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                申請詳細 - {detailModal.request_number}
+              </h3>
+              <button
+                onClick={() => setDetailModal(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <img
+                  src={getImageUrl(detailModal.image.storage_path)}
+                  alt=""
+                  className="w-20 h-20 rounded object-cover"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{detailModal.image.original_filename}</p>
+                  <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${statusLabels[detailModal.status].class}`}>
+                    {statusLabels[detailModal.status].text}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">申請者</p>
+                  <p className="font-medium">{detailModal.user.name}</p>
+                  <p className="text-xs text-gray-500">{detailModal.user.department?.name || '未所属'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">申請日時</p>
+                  <p className="font-medium">{formatDate(detailModal.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">利用目的</p>
+                  <p className="font-medium">
+                    {detailModal.purpose_type ? purposeTypeLabels[detailModal.purpose_type] : '-'}
+                  </p>
+                  {detailModal.purpose_other && (
+                    <p className="text-xs text-gray-500">{detailModal.purpose_other}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-gray-500">掲載終了日</p>
+                  <p className={`font-medium ${detailModal.usage_end_date && isExpiredUsage(detailModal.usage_end_date) ? 'text-red-600' : ''}`}>
+                    {detailModal.usage_end_date ? formatDateOnly(detailModal.usage_end_date) : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {detailModal.requester_comment && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-xs font-medium text-blue-700 mb-1">申請者からのコメント:</p>
+                  <p className="text-sm text-blue-900">{detailModal.requester_comment}</p>
+                </div>
+              )}
+
+              {detailModal.approver_comment && (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-xs font-medium text-green-700 mb-1">承認者からのコメント:</p>
+                  <p className="text-sm text-green-900">{detailModal.approver_comment}</p>
+                </div>
+              )}
+
+              {detailModal.rejection_reason && (
+                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-xs font-medium text-red-700 mb-1">却下理由:</p>
+                  <p className="text-sm text-red-900">{detailModal.rejection_reason}</p>
+                </div>
+              )}
+
+              {detailModal.approver && (
+                <div className="text-sm">
+                  <p className="text-gray-500">承認者</p>
+                  <p className="font-medium">{detailModal.approver.name}</p>
+                  {detailModal.approved_at && (
+                    <p className="text-xs text-gray-500">{formatDate(detailModal.approved_at)}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setDetailModal(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

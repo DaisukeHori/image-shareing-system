@@ -228,3 +228,81 @@ export async function sendApprovalResultEmail(
     throw error;
   }
 }
+
+interface DeletionReminderParams {
+  requestNumber: string;
+  imageName: string;
+  usageEndDate: string;
+  userName: string;
+  confirmUrl: string;
+}
+
+export async function sendDeletionReminderEmail(
+  to: string,
+  params: DeletionReminderParams,
+  role: 'user' | 'approver'
+) {
+  const { requestNumber, imageName, usageEndDate, userName, confirmUrl } = params;
+  const roleLabel = role === 'user' ? '申請者' : '承認者';
+  const formattedDate = new Date(usageEndDate).toLocaleDateString('ja-JP');
+
+  const emailContent = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #dc2626;">【重要】レンタルフォト削除確認のお願い</h2>
+
+      <p>
+        以下のレンタルフォトの掲載期限が過ぎています。<br>
+        該当するデータを削除し、確認ボタンを押してください。
+      </p>
+
+      <div style="background: #fef2f2; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #fecaca;">
+        <p><strong>申請番号:</strong> ${requestNumber}</p>
+        <p><strong>申請者:</strong> ${userName}</p>
+        <p><strong>ファイル名:</strong> ${imageName}</p>
+        <p><strong style="color: #dc2626;">掲載終了日:</strong> ${formattedDate}</p>
+      </div>
+
+      <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #fde68a;">
+        <p style="color: #92400e; font-weight: bold; margin-bottom: 8px;">削除すべきデータ:</p>
+        <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+          <li>パソコン内のデータ</li>
+          <li>スマートフォン内のデータ</li>
+          <li>クラウドストレージ</li>
+          <li>SNSの下書き</li>
+          <li>その他の保存場所</li>
+        </ul>
+      </div>
+
+      <p style="text-align: center; margin: 24px 0;">
+        <a href="${confirmUrl}"
+           style="display: inline-block; padding: 14px 32px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+          削除を確認する（${roleLabel}）
+        </a>
+      </p>
+
+      <p style="color: #dc2626; font-size: 14px; font-weight: bold;">
+        ※ ${roleLabel}と${role === 'user' ? '承認者' : '申請者'}の両方が確認するまで、毎日このメールが送信されます。
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+
+      <p style="color: #999; font-size: 12px;">
+        このメールはレボル カットモデル画像管理システムから自動送信されています。
+      </p>
+    </div>
+  `;
+
+  try {
+    await sgMail.send({
+      to,
+      from: process.env.SENDGRID_FROM_EMAIL!,
+      subject: `【要対応】レンタルフォト削除確認 (${requestNumber})`,
+      html: emailContent,
+    });
+
+    console.log(`Deletion reminder email sent to ${to}`);
+  } catch (error) {
+    console.error(`Failed to send deletion reminder email to ${to}:`, error);
+    throw error;
+  }
+}

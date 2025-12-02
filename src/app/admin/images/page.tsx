@@ -30,6 +30,8 @@ interface Image {
   folder: Folder | null;
   permissions?: Permission[];
   created_at: string;
+  file_type?: 'image' | 'video';
+  mime_type?: string;
 }
 
 export default function ImagesPage() {
@@ -384,7 +386,7 @@ export default function ImagesPage() {
       for (const entry of entries) {
         if (entry.isFile) {
           const file = await getFileFromEntry(entry as FileSystemFileEntry);
-          if (file && file.type.startsWith('image/')) {
+          if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
             files.push(file);
           }
         } else if (entry.isDirectory) {
@@ -428,7 +430,7 @@ export default function ImagesPage() {
       for (const entry of entries) {
         if (entry.isFile) {
           const file = await getFileFromEntry(entry as FileSystemFileEntry);
-          if (file && file.type.startsWith('image/')) {
+          if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
             results.push({ folderName, file });
           }
         }
@@ -558,7 +560,7 @@ export default function ImagesPage() {
     const folderFilesList: { folderName: string; file: File }[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
         folderFilesList.push({ folderName: fName, file });
       }
     }
@@ -882,6 +884,10 @@ export default function ImagesPage() {
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${storagePath}`;
   }
 
+  function isVideo(image: Image) {
+    return image.file_type === 'video' || image.mime_type?.startsWith('video/');
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -923,11 +929,11 @@ export default function ImagesPage() {
             📁 新規フォルダ
           </button>
           <label className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-sm">
-            {uploading ? `${uploadProgress.current}/${uploadProgress.total}` : '📷 画像追加'}
+            {uploading ? `${uploadProgress.current}/${uploadProgress.total}` : '📷 ファイル追加'}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
               multiple
               onChange={handleFileUpload}
               disabled={uploading}
@@ -939,7 +945,7 @@ export default function ImagesPage() {
             <input
               ref={folderInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               /* @ts-expect-error webkitdirectory is not in types */
               webkitdirectory="true"
               onChange={handleFolderUpload}
@@ -1143,11 +1149,30 @@ export default function ImagesPage() {
                 className="aspect-square overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer relative"
                 onClick={() => setPreviewImage(image)}
               >
-                <img
-                  src={getImageUrl(image.storage_path)}
-                  alt={image.original_filename}
-                  className="w-full h-full object-cover pointer-events-none"
-                />
+                {isVideo(image) ? (
+                  <>
+                    <video
+                      src={getImageUrl(image.storage_path)}
+                      className="w-full h-full object-cover pointer-events-none"
+                      muted
+                      preload="metadata"
+                    />
+                    {/* 動画アイコン */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <img
+                    src={getImageUrl(image.storage_path)}
+                    alt={image.original_filename}
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                )}
                 {/* 拡大アイコン（ホバー時のみ表示） */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all pointer-events-none">
                   <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1288,17 +1313,27 @@ export default function ImagesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={getImageUrl(image.storage_path)}
-                        alt=""
-                        className="w-8 h-8 object-cover rounded pointer-events-none"
-                      />
+                      {isVideo(image) ? (
+                        <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                          <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <img
+                          src={getImageUrl(image.storage_path)}
+                          alt=""
+                          className="w-8 h-8 object-cover rounded pointer-events-none"
+                        />
+                      )}
                       <span className="text-sm text-gray-900 truncate max-w-[150px] sm:max-w-none">
                         {image.original_filename}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">画像</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">
+                    {isVideo(image) ? '動画' : '画像'}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">
                     {image.permissions?.length || 0}人
                   </td>
@@ -1640,11 +1675,20 @@ export default function ImagesPage() {
             className="max-w-full max-h-full flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={getImageUrl(previewImage.storage_path)}
-              alt={previewImage.original_filename}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg"
-            />
+            {isVideo(previewImage) ? (
+              <video
+                src={getImageUrl(previewImage.storage_path)}
+                controls
+                autoPlay
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            ) : (
+              <img
+                src={getImageUrl(previewImage.storage_path)}
+                alt={previewImage.original_filename}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            )}
             <div className="mt-4 flex flex-col items-center gap-2">
               <p className="text-white text-sm text-center">
                 {previewImage.original_filename}

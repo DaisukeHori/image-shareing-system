@@ -74,18 +74,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ファイルタイプチェック
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+    const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
+    const isVideo = allowedVideoTypes.includes(file.type);
+
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { success: false, error: 'JPEG、PNG、WebP形式のみアップロード可能です' },
+        { success: false, error: '対応形式: 画像(JPEG, PNG, WebP, GIF) / 動画(MP4, WebM, MOV, AVI, MKV)' },
         { status: 400 }
       );
     }
 
-    // ファイルサイズチェック (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // ファイルサイズチェック (画像: 10MB, 動画: 500MB)
+    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
+    const maxSizeLabel = isVideo ? '500MB' : '10MB';
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { success: false, error: 'ファイルサイズは10MB以下にしてください' },
+        { success: false, error: `ファイルサイズは${maxSizeLabel}以下にしてください` },
         { status: 400 }
       );
     }
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest) {
       throw uploadError;
     }
 
-    // DBに画像情報を保存
+    // DBに画像/動画情報を保存
     const { data, error } = await supabase
       .from('images')
       .insert({
@@ -123,6 +129,7 @@ export async function POST(request: NextRequest) {
         storage_path: storagePath,
         file_size: file.size,
         mime_type: file.type,
+        file_type: isVideo ? 'video' : 'image',
       })
       .select()
       .single();
