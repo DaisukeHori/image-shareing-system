@@ -62,6 +62,19 @@ export default function WatermarkVerifyPage() {
         body: formData,
       });
 
+      if (!res.ok) {
+        // HTTPエラーの場合
+        let errorMessage = `サーバーエラー (${res.status})`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // JSONパースに失敗した場合はステータスコードを表示
+        }
+        setErrorModal(errorMessage);
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         setResult(data.data);
@@ -70,7 +83,8 @@ export default function WatermarkVerifyPage() {
       }
     } catch (error) {
       console.error('Verify failed:', error);
-      setErrorModal('検証に失敗しました。ネットワークエラーが発生した可能性があります。');
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      setErrorModal(`検証に失敗しました: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
