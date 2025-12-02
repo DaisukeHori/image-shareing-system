@@ -113,14 +113,15 @@ export default function ImagesPage() {
     if (!confirm(message)) return;
 
     try {
-      // フォルダを削除
-      for (const folderId of selectedFolderIds) {
-        await fetch(`/api/admin/folders/${folderId}`, { method: 'DELETE' });
-      }
-      // 画像を削除
-      for (const imageId of selectedImageIds) {
-        await fetch(`/api/admin/images/${imageId}`, { method: 'DELETE' });
-      }
+      // 並列実行で高速化
+      await Promise.all([
+        ...Array.from(selectedFolderIds).map(folderId =>
+          fetch(`/api/admin/folders/${folderId}`, { method: 'DELETE' })
+        ),
+        ...Array.from(selectedImageIds).map(imageId =>
+          fetch(`/api/admin/images/${imageId}`, { method: 'DELETE' })
+        ),
+      ]);
       clearSelection();
       fetchData();
     } catch (error) {
@@ -135,23 +136,25 @@ export default function ImagesPage() {
     if (folderCount === 0 && imageCount === 0) return;
 
     try {
-      // フォルダを移動
-      for (const folderId of selectedFolderIds) {
-        if (folderId === targetFolderId) continue;
-        await fetch(`/api/admin/folders/${folderId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parent_id: targetFolderId }),
-        });
-      }
-      // 画像を移動
-      for (const imageId of selectedImageIds) {
-        await fetch(`/api/admin/images/${imageId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folder_id: targetFolderId }),
-        });
-      }
+      // 並列実行で高速化
+      await Promise.all([
+        ...Array.from(selectedFolderIds)
+          .filter(folderId => folderId !== targetFolderId)
+          .map(folderId =>
+            fetch(`/api/admin/folders/${folderId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ parent_id: targetFolderId }),
+            })
+          ),
+        ...Array.from(selectedImageIds).map(imageId =>
+          fetch(`/api/admin/images/${imageId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_id: targetFolderId }),
+          })
+        ),
+      ]);
       clearSelection();
       setShowMoveModal(false);
       fetchData();
@@ -616,29 +619,25 @@ export default function ImagesPage() {
     if (!draggingImageId && !draggingFolderId) return;
 
     try {
-      // 選択されているすべての画像を移動
-      if (selectedImageIds.size > 0) {
-        for (const imageId of selectedImageIds) {
-          await fetch(`/api/admin/images/${imageId}`, {
+      // 並列実行で高速化
+      await Promise.all([
+        ...Array.from(selectedImageIds).map(imageId =>
+          fetch(`/api/admin/images/${imageId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folder_id: targetFolderId }),
-          });
-        }
-      }
-
-      // 選択されているすべてのフォルダを移動
-      if (selectedFolderIds.size > 0) {
-        for (const folderId of selectedFolderIds) {
-          // 自分自身へのドロップはスキップ
-          if (folderId === targetFolderId) continue;
-          await fetch(`/api/admin/folders/${folderId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parent_id: targetFolderId }),
-          });
-        }
-      }
+          })
+        ),
+        ...Array.from(selectedFolderIds)
+          .filter(folderId => folderId !== targetFolderId)
+          .map(folderId =>
+            fetch(`/api/admin/folders/${folderId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ parent_id: targetFolderId }),
+            })
+          ),
+      ]);
 
       clearSelection();
       fetchData();
