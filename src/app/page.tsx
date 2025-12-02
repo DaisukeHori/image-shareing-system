@@ -631,7 +631,7 @@ export default function Home() {
 
             {/* 並び替えUI */}
             <div className="flex items-center justify-end gap-2 mb-3">
-              <span className="text-xs text-gray-500">並び替え:</span>
+              <span className="text-xs text-gray-600">並び替え:</span>
               <select
                 value={`${sortKey}-${sortOrder}`}
                 onChange={(e) => {
@@ -639,12 +639,12 @@ export default function Home() {
                   setSortKey(key);
                   setSortOrder(order);
                 }}
-                className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
+                className="px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="created_at-desc">作成日（新しい順）</option>
-                <option value="created_at-asc">作成日（古い順）</option>
                 <option value="filename-asc">ファイル名（A→Z）</option>
                 <option value="filename-desc">ファイル名（Z→A）</option>
+                <option value="created_at-desc">作成日（新しい順）</option>
+                <option value="created_at-asc">作成日（古い順）</option>
               </select>
             </div>
 
@@ -693,8 +693,10 @@ export default function Home() {
                     className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg group transition-all duration-200 ease-out hover:scale-[1.02] active:scale-95"
                   >
                     <div
-                      className="aspect-square bg-gray-100 relative cursor-pointer"
+                      className="aspect-square bg-gray-100 relative cursor-pointer select-none"
+                      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
                       onClick={() => setPreviewImage(image)}
+                      onContextMenu={(e) => e.preventDefault()}
                     >
                       {isVideo(image) ? (
                         <>
@@ -702,10 +704,12 @@ export default function Home() {
                           <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
                           <video
                             src={`${getImageUrl(image.storage_path)}#t=0.1`}
-                            className="w-full h-full object-cover relative z-[1]"
+                            className="w-full h-full object-cover relative z-[1] pointer-events-none"
                             muted
                             playsInline
                             preload="metadata"
+                            draggable={false}
+                            onContextMenu={(e) => e.preventDefault()}
                           />
                           {/* 動画アイコン */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
@@ -720,7 +724,9 @@ export default function Home() {
                         <img
                           src={getImageUrl(image.storage_path)}
                           alt={image.original_filename}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover pointer-events-none"
+                          draggable={false}
+                          onContextMenu={(e) => e.preventDefault()}
                         />
                       )}
                       {/* 拡大アイコン（ホバー時のみ表示） */}
@@ -1337,21 +1343,28 @@ export default function Home() {
           )}
 
           <div
-            className="max-w-full max-h-full flex flex-col items-center"
+            className="max-w-full max-h-full flex flex-col items-center select-none"
+            style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
             onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.preventDefault()}
           >
             {isVideo(previewImage) ? (
               <video
                 src={getImageUrl(previewImage.storage_path)}
                 controls
                 autoPlay
+                playsInline
+                controlsList="nodownload"
                 className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                onContextMenu={(e) => e.preventDefault()}
               />
             ) : (
               <img
                 src={getImageUrl(previewImage.storage_path)}
                 alt={previewImage.original_filename}
                 className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
               />
             )}
             <div className="mt-4 flex flex-col items-center gap-2">
