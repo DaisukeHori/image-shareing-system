@@ -101,6 +101,8 @@ export default function ImagesPage() {
     setSelectedImageIds(new Set());
   }
 
+  const [showMoveModal, setShowMoveModal] = useState(false);
+
   async function handleBulkDelete() {
     const folderCount = selectedFolderIds.size;
     const imageCount = selectedImageIds.size;
@@ -123,6 +125,27 @@ export default function ImagesPage() {
     } catch (error) {
       console.error('Bulk delete failed:', error);
       alert('一括削除に失敗しました');
+    }
+  }
+
+  async function handleBulkMove(targetFolderId: string | null) {
+    const imageCount = selectedImageIds.size;
+    if (imageCount === 0) return;
+
+    try {
+      for (const imageId of selectedImageIds) {
+        await fetch(`/api/admin/images/${imageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_id: targetFolderId }),
+        });
+      }
+      clearSelection();
+      setShowMoveModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Bulk move failed:', error);
+      alert('一括移動に失敗しました');
     }
   }
 
@@ -766,7 +789,10 @@ export default function ImagesPage() {
       {(selectedFolderIds.size > 0 || selectedImageIds.size > 0) && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm text-blue-700 font-medium">
-            {selectedFolderIds.size + selectedImageIds.size}件選択中
+            {selectedFolderIds.size > 0 && `${selectedFolderIds.size}フォルダ`}
+            {selectedFolderIds.size > 0 && selectedImageIds.size > 0 && ' + '}
+            {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
+            {' '}選択中
           </span>
           <div className="flex gap-2">
             <button
@@ -775,6 +801,14 @@ export default function ImagesPage() {
             >
               すべて選択
             </button>
+            {selectedImageIds.size > 0 && (
+              <button
+                onClick={() => setShowMoveModal(true)}
+                className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              >
+                移動
+              </button>
+            )}
             <button
               onClick={clearSelection}
               className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
@@ -785,7 +819,7 @@ export default function ImagesPage() {
               onClick={handleBulkDelete}
               className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700"
             >
-              一括削除
+              削除
             </button>
           </div>
         </div>
@@ -1185,6 +1219,57 @@ export default function ImagesPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 移動先フォルダ選択モーダル */}
+      {showMoveModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+              移動先を選択
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              {selectedImageIds.size}枚の画像を移動します
+            </p>
+            <div className="space-y-1 max-h-60 overflow-y-auto border rounded-lg p-2">
+              <button
+                onClick={() => handleBulkMove(null)}
+                className={`w-full flex items-center gap-2 p-2 rounded text-left hover:bg-gray-100 ${
+                  currentFolderId === null ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+                }`}
+                disabled={currentFolderId === null}
+              >
+                <span className="text-xl">🏠</span>
+                <span className="text-sm text-gray-900">ルート</span>
+                {currentFolderId === null && <span className="text-xs text-gray-400 ml-auto">現在地</span>}
+              </button>
+              {allFolders
+                .filter(f => !selectedFolderIds.has(f.id))
+                .map((folder) => (
+                  <button
+                    key={folder.id}
+                    onClick={() => handleBulkMove(folder.id)}
+                    className={`w-full flex items-center gap-2 p-2 rounded text-left hover:bg-gray-100 ${
+                      currentFolderId === folder.id ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+                    }`}
+                    disabled={currentFolderId === folder.id}
+                  >
+                    <span className="text-xl">📁</span>
+                    <span className="text-sm text-gray-900">{folder.name}</span>
+                    {currentFolderId === folder.id && <span className="text-xs text-gray-400 ml-auto">現在地</span>}
+                  </button>
+                ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowMoveModal(false)}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
               </button>
             </div>
           </div>
