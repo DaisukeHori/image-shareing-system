@@ -20,7 +20,7 @@ export async function GET() {
       .select(`
         id,
         name,
-        manager:users!departments_manager_user_id_fkey (
+        manager:users!fk_manager (
           email
         )
       `)
