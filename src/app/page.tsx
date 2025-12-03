@@ -103,7 +103,7 @@ export default function Home() {
   // 掲載終了確認
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
   // エラーモーダル
-  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
+　const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   // 並び替え
   const [sortKey, setSortKey] = useState<SortKey>('filename');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -509,7 +509,11 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen bg-gray-50 select-none"
+      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* ヘッダー */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

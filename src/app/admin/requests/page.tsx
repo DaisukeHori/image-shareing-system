@@ -15,6 +15,8 @@ interface Image {
   storage_path: string;
   file_type?: 'image' | 'video';
   mime_type?: string;
+  thumbnail_path?: string | null;
+  preview_path?: string | null;
 }
 
 type PurposeType = 'hotpepper' | 'website' | 'sns' | 'print' | 'other';
@@ -371,14 +373,21 @@ export default function RequestsPage() {
             <div className="flex gap-3 mb-3">
               {isVideo(request.image) ? (
                 <div
-                  className="w-16 h-16 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex-shrink-0 cursor-pointer flex items-center justify-center relative"
+                  className="w-16 h-16 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex-shrink-0 cursor-pointer flex items-center justify-center relative overflow-hidden"
                   onClick={() => setPreviewImage({
-                    url: getImageUrl(request.image.storage_path),
+                    url: getImageUrl(request.image.preview_path || request.image.storage_path),
                     filename: request.image.original_filename,
                     isVideo: true
                   })}
                 >
-                  <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
+                  {request.image.thumbnail_path ? (
+                    <img
+                      src={getImageUrl(request.image.thumbnail_path)}
+                      alt=""
+                      className="w-full h-full object-cover absolute inset-0"
+                    />
+                  ) : null}
+                  <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center relative z-10">
                     <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
                     </svg>
@@ -570,14 +579,21 @@ export default function RequestsPage() {
                   <div className="flex items-center">
                     {isVideo(request.image) ? (
                       <div
-                        className="w-10 h-10 rounded bg-gradient-to-br from-gray-700 to-gray-900 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                        className="w-10 h-10 rounded bg-gradient-to-br from-gray-700 to-gray-900 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center relative overflow-hidden"
                         onClick={() => setPreviewImage({
-                          url: getImageUrl(request.image.storage_path),
+                          url: getImageUrl(request.image.preview_path || request.image.storage_path),
                           filename: request.image.original_filename,
                           isVideo: true
                         })}
                       >
-                        <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        {request.image.thumbnail_path ? (
+                          <img
+                            src={getImageUrl(request.image.thumbnail_path)}
+                            alt=""
+                            className="w-full h-full object-cover absolute inset-0"
+                          />
+                        ) : null}
+                        <svg className="w-4 h-4 text-white ml-0.5 relative z-10" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
