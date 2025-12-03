@@ -83,9 +83,10 @@ export async function POST(request: NextRequest) {
     const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
     const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
-    const isVideo = allowedVideoTypes.includes(file.type);
+    // 動画かどうかの判定（video/で始まるMIMEタイプも許可）
+    const isVideo = allowedVideoTypes.includes(file.type) || file.type.startsWith('video/');
 
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/') && !file.type.startsWith('video/')) {
       return NextResponse.json(
         { success: false, error: '対応形式: 画像(JPEG, PNG, WebP, GIF) / 動画(MP4, WebM, MOV, AVI, MKV)' },
         { status: 400 }

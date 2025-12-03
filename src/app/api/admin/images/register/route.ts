@@ -75,8 +75,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Image registration error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: 'ファイル登録に失敗しました' },
+      { success: false, error: `ファイル登録に失敗しました: ${errorMessage}` },
       { status: 500 }
     );
   }

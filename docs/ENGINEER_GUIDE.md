@@ -539,6 +539,27 @@ export async function POST(request: NextRequest) {
 }
 ```
 
+### 7.5 ファイルタイプ検証
+
+**MIMEタイプチェック**:
+```typescript
+// 許可されるファイル形式
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+
+// video/* や image/* で始まるMIMEタイプも許可
+const isVideo = allowedVideoTypes.includes(contentType) || contentType.startsWith('video/');
+const isImage = allowedImageTypes.includes(contentType) || contentType.startsWith('image/');
+```
+
+**サイズ制限**:
+- 画像: 最大50MB
+- 動画: 最大500MB
+
+**フォルダアップロード**:
+- `webkitdirectory` 属性を使用
+- `accept` 属性は使用しない（ネストフォルダ内ファイルの除外を防ぐ）
+
 ---
 
 ## 8. セキュリティ機能
@@ -567,6 +588,45 @@ export async function POST(request: NextRequest) {
 - 申請履歴の永続化（画像削除後も保持）
 - 透かし検証機能
 - 削除確認ワークフロー
+
+### 8.6 画像削除時の申請履歴保持
+
+画像が削除されても、関連する申請履歴は保持されます。
+
+**データベース設計**:
+```sql
+-- approval_requests.image_id は ON DELETE SET NULL
+image_id UUID REFERENCES images(id) ON DELETE SET NULL
+```
+
+**フロントエンド実装**:
+```typescript
+// ApprovalRequestインターフェース
+interface ApprovalRequest {
+  // ...
+  image: Image | null;  // 削除された場合はnull
+}
+
+// 表示時のnullチェック
+{request.image ? (
+  <img src={getImageUrl(request.image.storage_path)} />
+) : (
+  <div className="placeholder">削除済</div>
+)}
+
+// ダウンロードボタンの制御
+{request.status === 'approved' && request.image && (
+  <button>ダウンロード</button>
+)}
+{request.status === 'approved' && !request.image && (
+  <span>画像削除済み</span>
+)}
+```
+
+**ダウンロード制限**:
+- 1申請につき**1回のみ**ダウンロード可能
+- `download_count >= 1` でダウンロード拒否
+- ダウンロード後、ステータスが `downloaded` に変更
 
 ---
 
@@ -689,8 +749,10 @@ npm run start
 |--------|------|------|
 | `この画像へのアクセス権限がありません` | 権限設定が不足 | フォルダ/画像の権限を確認 |
 | `ダウンロード期限が切れています` | 7日経過 | 再申請が必要 |
-| `既にダウンロード済みです` | 1回制限 | 再申請が必要 |
+| `既にダウンロード済みです` | 1回制限（`download_count >= 1`） | 再申請が必要 |
 | `トークンが無効です` | 期限切れ/使用済み | 再送信または管理画面から処理 |
+| `画像が削除されたためダウンロードできません` | 画像がDBから削除済み | 画像の再アップロードが必要 |
+| `ファイル登録に失敗しました` | DB登録エラー | サーバーログを確認、MIMEタイプ・ストレージ確認 |
 
 ### ログ確認
 
