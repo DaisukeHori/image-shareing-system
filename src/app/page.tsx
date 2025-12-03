@@ -33,7 +33,7 @@ type SortOrder = 'asc' | 'desc';
 interface ApprovalRequest {
   id: string;
   request_number: string;
-  image: Image;
+  image: Image | null;
   status: 'pending' | 'approved' | 'rejected' | 'expired' | 'downloaded';
   purpose: string;
   created_at: string;
@@ -837,14 +837,20 @@ export default function Home() {
                       onClick={() => setRequestDetailModal(request)}
                     >
                       <div className="flex gap-3">
-                        <img
-                          src={getImageUrl(request.image.storage_path)}
-                          alt=""
-                          className="w-16 h-16 rounded object-cover flex-shrink-0"
-                        />
+                        {request.image ? (
+                          <img
+                            src={getImageUrl(request.image.storage_path)}
+                            alt=""
+                            className="w-16 h-16 rounded object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
+                            <span className="text-gray-400 text-xs">削除済</span>
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-900 truncate">
-                            {request.image.original_filename}
+                            {request.image?.original_filename || '（削除された画像）'}
                           </p>
                           <p className="text-xs text-gray-500 truncate mt-1">
                             {request.purpose}
@@ -871,13 +877,16 @@ export default function Home() {
                           </svg>
                         </div>
                       </div>
-                      {request.status === 'approved' && (
+                      {request.status === 'approved' && request.image && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setDownloadModal(request); }}
                           className="w-full mt-3 px-3 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
                         >
                           ダウンロード
                         </button>
+                      )}
+                      {request.status === 'approved' && !request.image && (
+                        <p className="mt-3 text-xs text-gray-500 text-center">画像が削除されたためダウンロードできません</p>
                       )}
                       {request.status === 'rejected' && request.rejection_reason && (
                         <p className="mt-2 text-xs text-red-600">
@@ -954,13 +963,19 @@ export default function Home() {
                         >
                           <td className="px-4 lg:px-6 py-4">
                             <div className="flex items-center">
-                              <img
-                                src={getImageUrl(request.image.storage_path)}
-                                alt=""
-                                className="w-12 h-12 rounded object-cover"
-                              />
+                              {request.image ? (
+                                <img
+                                  src={getImageUrl(request.image.storage_path)}
+                                  alt=""
+                                  className="w-12 h-12 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center">
+                                  <span className="text-gray-400 text-[10px]">削除済</span>
+                                </div>
+                              )}
                               <span className="ml-3 text-sm text-gray-500 max-w-[100px] lg:max-w-[150px] truncate">
-                                {request.image.original_filename}
+                                {request.image?.original_filename || '（削除された画像）'}
                               </span>
                             </div>
                           </td>
@@ -984,13 +999,16 @@ export default function Home() {
                           </td>
                           <td className="px-4 lg:px-6 py-4">
                             <div className="flex items-center gap-2 flex-wrap">
-                              {request.status === 'approved' && (
+                              {request.status === 'approved' && request.image && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDownloadModal(request); }}
                                   className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
                                 >
                                   ダウンロード
                                 </button>
+                              )}
+                              {request.status === 'approved' && !request.image && (
+                                <span className="text-xs text-gray-400">DL不可</span>
                               )}
                               {request.status === 'pending' && (
                                 <button
@@ -1593,13 +1611,19 @@ export default function Home() {
 
             {/* 画像プレビュー */}
             <div className="mb-4">
-              <img
-                src={getImageUrl(requestDetailModal.image.storage_path)}
-                alt={requestDetailModal.image.original_filename}
-                className="w-full max-h-64 object-contain bg-gray-100 rounded"
-              />
+              {requestDetailModal.image ? (
+                <img
+                  src={getImageUrl(requestDetailModal.image.storage_path)}
+                  alt={requestDetailModal.image.original_filename}
+                  className="w-full max-h-64 object-contain bg-gray-100 rounded"
+                />
+              ) : (
+                <div className="w-full h-48 bg-gray-200 rounded flex items-center justify-center">
+                  <span className="text-gray-400">画像は削除されました</span>
+                </div>
+              )}
               <p className="text-sm text-gray-500 mt-2 text-center">
-                {requestDetailModal.image.original_filename}
+                {requestDetailModal.image?.original_filename || '（削除された画像）'}
               </p>
             </div>
 
@@ -1666,7 +1690,7 @@ export default function Home() {
               >
                 閉じる
               </button>
-              {requestDetailModal.status === 'approved' && (
+              {requestDetailModal.status === 'approved' && requestDetailModal.image && (
                 <button
                   onClick={() => {
                     setRequestDetailModal(null);
@@ -1676,6 +1700,11 @@ export default function Home() {
                 >
                   ダウンロード
                 </button>
+              )}
+              {requestDetailModal.status === 'approved' && !requestDetailModal.image && (
+                <span className="flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm text-center">
+                  画像削除済み
+                </span>
               )}
               {requestDetailModal.status === 'pending' && (
                 <button
