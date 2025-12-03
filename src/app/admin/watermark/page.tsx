@@ -170,33 +170,58 @@ export default function WatermarkVerifyPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-2">
-        <h1 className="text-2xl font-bold text-gray-900">電子透かし検証</h1>
-        <HelpTip
-          title="電子透かしとは？"
-          content="ダウンロードした画像には、目に見えない電子透かしが埋め込まれます。この機能で透かしを読み取り、誰がいつダウンロードしたかを確認できます。"
-          highlight
-        />
-      </div>
-      <p className="text-sm text-gray-500 mb-6">不正利用の調査に使用できます</p>
-
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            画像の透かしを検証
-          </h2>
-          <HelpTip
-            content="PNG形式のままアップロードしてください。JPEG変換やリサイズをすると透かしが失われます。"
-            size="sm"
-          />
+    <div className="space-y-6">
+      {/* ヘッダー */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl" />
+        <div className="relative flex items-start gap-4">
+          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
+            <span className="text-3xl">🔍</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold">電子透かし検証</h1>
+              <HelpTip
+                title="電子透かしとは？"
+                content="ダウンロードした画像には、目に見えない電子透かしが埋め込まれます。この機能で透かしを読み取り、誰がいつダウンロードしたかを確認できます。"
+                highlight
+              />
+            </div>
+            <p className="text-white/80 text-sm">画像の不正利用を調査できます</p>
+          </div>
         </div>
-        <p className="text-sm text-gray-500 mb-4">
-          ダウンロードされた画像をアップロードすると、埋め込まれた電子透かし情報を読み取って、誰がいつダウンロードしたかを確認できます。
+      </div>
+
+      {/* アップロードセクション */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+            <span className="text-xl">📤</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              画像の透かしを検証
+            </h2>
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <HelpTip
+                content="PNG形式のままアップロードしてください。JPEG変換やリサイズをすると透かしが失われます。"
+                size="sm"
+              />
+              PNG形式推奨
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 mb-5">
+          ダウンロードされた画像をアップロードすると、埋め込まれた電子透かし情報を読み取り、
+          <span className="font-medium text-gray-900">誰がいつダウンロードしたか</span>を確認できます。
         </p>
 
-        <div className="flex items-center gap-4">
-          <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="group inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg shadow-violet-500/25 cursor-pointer font-medium">
+            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             画像を選択
             <input
               ref={fileInputRef}
@@ -209,7 +234,7 @@ export default function WatermarkVerifyPage() {
           {previewUrl && (
             <button
               onClick={reset}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
             >
               リセット
             </button>
@@ -218,38 +243,56 @@ export default function WatermarkVerifyPage() {
       </div>
 
       {loading && (
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <div className="text-gray-500">検証中...</div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 relative">
+            <div className="absolute inset-0 border-4 border-violet-200 rounded-full" />
+            <div className="absolute inset-0 border-4 border-violet-600 rounded-full border-t-transparent animate-spin" />
+          </div>
+          <p className="text-gray-700 font-medium">検証中...</p>
+          <p className="text-sm text-gray-500 mt-1">電子透かしを解析しています</p>
         </div>
       )}
 
       {previewUrl && !loading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* プレビュー */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-lg">🖼️</span>
               アップロードした画像
             </h3>
-            <img
-              src={previewUrl}
-              alt="検証対象の画像"
-              className="w-full rounded-lg"
-            />
+            <div className="rounded-xl overflow-hidden border border-gray-200">
+              <img
+                src={previewUrl}
+                alt="検証対象の画像"
+                className="w-full"
+              />
+            </div>
           </div>
 
           {/* 結果 */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-lg">📋</span>
               検証結果
             </h3>
 
             {result?.found ? (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* 透かし情報 */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h4 className="font-medium text-green-800 mb-3">
-                    電子透かしを検出しました
-                  </h4>
+                <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-5">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-200/50 rounded-full blur-2xl" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <h4 className="font-bold text-emerald-800">
+                        電子透かしを検出しました
+                      </h4>
+                    </div>
                   <dl className="space-y-2 text-sm">
                     <div className="flex">
                       <dt className="w-28 text-gray-500">ダウンロード者:</dt>
@@ -349,29 +392,62 @@ export default function WatermarkVerifyPage() {
       )}
 
       {/* 使い方 */}
-      <div className="mt-8 bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">使い方</h3>
-        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
-          <li>
-            検証したい画像（システムからダウンロードされた画像）を選択します
-          </li>
-          <li>システムが自動的に電子透かしの有無を検証します</li>
-          <li>
-            透かしが見つかった場合、ダウンロードした人、承認者、日時などの情報が表示されます
-          </li>
-          <li>
-            透かしが見つからない場合、その画像はこのシステムからダウンロードされたものではない可能性があります
-          </li>
-        </ol>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">📖</span>
+            使い方
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[
+              { step: 1, icon: '📤', title: '画像を選択', desc: 'ダウンロードされた画像を選択' },
+              { step: 2, icon: '🔄', title: '自動検証', desc: 'システムが透かしを解析' },
+              { step: 3, icon: '✅', title: '結果確認', desc: 'ダウンロード者情報を表示' },
+              { step: 4, icon: '📋', title: '調査完了', desc: '不正利用の追跡が可能' },
+            ].map((item) => (
+              <div key={item.step} className="relative">
+                <div className="bg-gray-50 rounded-xl p-4 text-center h-full">
+                  <div className="w-8 h-8 bg-violet-600 text-white rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-3">
+                    {item.step}
+                  </div>
+                  <span className="text-2xl mb-2 block">{item.icon}</span>
+                  <p className="font-medium text-gray-900 text-sm">{item.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
 
-        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h4 className="font-medium text-yellow-800 mb-2">注意事項</h4>
-          <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
-            <li>ダウンロードした<strong>PNG形式のまま</strong>アップロードしてください</li>
-            <li>JPEG形式に変換すると透かしが失われます</li>
-            <li>画像をリサイズ・編集すると透かしが失われます</li>
-            <li>スクリーンショットからは透かしを検出できません</li>
-          </ul>
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <div>
+                <h4 className="font-bold text-amber-800 mb-2">注意事項</h4>
+                <ul className="space-y-1.5 text-sm text-amber-700">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    ダウンロードした<strong>PNG形式のまま</strong>アップロードしてください
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    JPEG形式に変換すると透かしが失われます
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    画像をリサイズ・編集すると透かしが失われます
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    スクリーンショットからは透かしを検出できません
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

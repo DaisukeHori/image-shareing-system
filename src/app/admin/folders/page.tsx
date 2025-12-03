@@ -158,51 +158,75 @@ export default function FoldersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">読み込み中...</div>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex justify-between items-center">
+          <div className="h-8 w-48 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-28 bg-gray-200 rounded-lg" />
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+              <div className="h-4 bg-gray-200 rounded w-1/3" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">フォルダ管理</h1>
-          <HelpTip
-            title="フォルダとは？"
-            content="画像を整理するためのフォルダです。フォルダごとにアクセス権限を設定できます。親フォルダを指定すると、階層構造を作成できます。"
-            highlight
-          />
+    <div className="space-y-6">
+      {/* ヘッダー */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900">フォルダ管理</h1>
+            <HelpTip
+              title="フォルダとは？"
+              content="画像を整理するためのフォルダです。フォルダごとにアクセス権限を設定できます。親フォルダを指定すると、階層構造を作成できます。"
+              highlight
+            />
+          </div>
+          <p className="text-sm text-gray-500">画像を整理するフォルダを管理します</p>
         </div>
         <button
           onClick={() => openModal()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/25 font-medium"
         >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
           新規作成
         </button>
       </div>
-      <p className="text-sm text-gray-500 mb-6">画像を整理するフォルダを管理します</p>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* フォルダリスト */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {folders.length > 0 ? (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-100">
             {renderFolderTree(folders)}
           </div>
         ) : (
           <div className="p-12 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-yellow-50 rounded-full flex items-center justify-center">
-              <span className="text-3xl">📁</span>
+            <div className="relative w-20 h-20 mx-auto mb-6">
+              <div className="absolute inset-0 bg-amber-100 rounded-2xl rotate-6" />
+              <div className="relative w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <span className="text-4xl">📁</span>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">フォルダがありません</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">フォルダがありません</h3>
             <p className="text-sm text-gray-500 mb-6">
-              最初のフォルダを作成して<br />画像を整理しましょう
+              最初のフォルダを作成して画像を整理しましょう
             </p>
             <button
               onClick={() => openModal()}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/25 font-medium"
             >
-              📁 フォルダを作成
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              フォルダを作成
             </button>
           </div>
         )}

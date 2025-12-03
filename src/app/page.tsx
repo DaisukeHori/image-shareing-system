@@ -502,8 +502,35 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">読み込み中...</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* スケルトンヘッダー */}
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+            <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </header>
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+          {/* スケルトンタブ */}
+          <div className="bg-white rounded-xl shadow-sm p-1 mb-4 sm:mb-6 animate-pulse">
+            <div className="flex gap-2">
+              <div className="flex-1 h-12 bg-gray-200 rounded-lg" />
+              <div className="flex-1 h-12 bg-gray-100 rounded-lg" />
+            </div>
+          </div>
+          {/* スケルトングリッド */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow overflow-hidden animate-pulse">
+                <div className="aspect-square bg-gradient-to-br from-gray-200 to-gray-100" />
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -514,28 +541,38 @@ export default function Home() {
       style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* ヘッダー */}
-      <header className="bg-white shadow">
+      {/* ヘッダー - モダンデザイン */}
+      <header className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16">
-            <h1 className="text-sm sm:text-xl font-bold text-gray-900 truncate">
-              <span className="hidden sm:inline">レボル カットモデル画像管理システム</span>
-              <span className="sm:hidden">画像管理</span>
-            </h1>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center shadow-lg">
+                <span className="text-white text-sm font-bold">R</span>
+              </div>
+              <h1 className="text-sm sm:text-lg font-bold text-white truncate">
+                <span className="hidden sm:inline">画像管理システム</span>
+                <span className="sm:hidden">画像管理</span>
+              </h1>
+            </div>
             {/* デスクトップメニュー */}
             <div className="hidden sm:flex items-center gap-4">
-              <span className="text-sm text-gray-600">{session?.user?.name}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg">
+                <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  {session?.user?.name?.charAt(0) || 'U'}
+                </div>
+                <span className="text-sm text-white/90">{session?.user?.name}</span>
+              </div>
               {session?.user?.role === 'admin' && (
                 <Link
                   href="/admin"
-                  className="text-sm text-blue-600 hover:text-blue-800"
+                  className="px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-sm hover:bg-blue-500/30 transition-colors"
                 >
                   管理画面
                 </Link>
               )}
               <button
                 onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="px-3 py-1.5 text-sm text-white/70 hover:text-white transition-colors"
               >
                 ログアウト
               </button>
@@ -544,30 +581,38 @@ export default function Home() {
             <div className="sm:hidden relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-2 text-gray-600"
+                className="p-2 text-white/80 hover:text-white"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
               {showMenu && (
-                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg py-2 w-48 z-50">
-                  <div className="px-4 py-2 text-sm text-gray-600 border-b">
-                    {session?.user?.name}
+                <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl py-2 w-56 z-50 border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-gray-50 border-b flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {session?.user?.name?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{session?.user?.name}</p>
+                      <p className="text-xs text-gray-500">ログイン中</p>
+                    </div>
                   </div>
                   {session?.user?.role === 'admin' && (
                     <Link
                       href="/admin"
-                      className="block px-4 py-2 text-sm text-blue-600 hover:bg-gray-50"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
                       onClick={() => setShowMenu(false)}
                     >
+                      <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">⚙️</span>
                       管理画面
                     </Link>
                   )}
                   <button
                     onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50"
                   >
+                    <span className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">🚪</span>
                     ログアウト
                   </button>
                 </div>
@@ -578,59 +623,72 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* ダウンロード可能な申請がある場合のアラートバナー */}
+        {/* ダウンロード可能な申請がある場合のアラートバナー - グラスモーフィズム */}
         {myRequests.filter((r) => r.status === 'approved').length > 0 && (
           <div
             onClick={() => setActiveTab('requests')}
-            className="mb-4 p-3 sm:p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow-lg cursor-pointer hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.01]"
+            className="group mb-4 relative overflow-hidden rounded-2xl shadow-xl cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="text-xl sm:text-2xl">📥</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500" />
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30" />
+            <div className="relative p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="relative">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
+                      <span className="text-2xl sm:text-3xl">📥</span>
+                    </div>
+                    <span className="absolute -top-1 -right-1 w-6 h-6 bg-white text-emerald-600 rounded-full flex items-center justify-center text-xs font-bold shadow-lg animate-bounce">
+                      {myRequests.filter((r) => r.status === 'approved').length}
+                    </span>
+                  </div>
+                  <div className="text-white">
+                    <p className="font-bold text-base sm:text-lg tracking-tight">
+                      ダウンロード準備完了！
+                    </p>
+                    <p className="text-xs sm:text-sm text-white/80 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      タップして今すぐダウンロード
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-sm sm:text-base">
-                    {myRequests.filter((r) => r.status === 'approved').length}件のダウンロード準備完了！
-                  </p>
-                  <p className="text-xs sm:text-sm text-green-100">
-                    クリックしてダウンロードページへ →
-                  </p>
+                <div className="hidden sm:flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30 group-hover:bg-white/30 transition-colors">
+                  <span className="text-white font-medium text-sm">確認する</span>
+                  <svg className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
                 </div>
               </div>
-              <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </div>
           </div>
         )}
 
-        {/* タブ - より魅力的に */}
-        <div className="bg-white rounded-xl shadow-sm p-1 mb-4 sm:mb-6">
-          <div className="flex">
+        {/* タブ - プレミアムデザイン */}
+        <div className="bg-white rounded-2xl shadow-sm p-1.5 mb-4 sm:mb-6 border border-gray-100">
+          <div className="flex gap-1">
             <button
               onClick={() => setActiveTab('images')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-xl font-medium text-sm sm:text-base transition-all duration-200 ${
                 activeTab === 'images'
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <span className="text-lg">🖼️</span>
+              <span className={`text-lg ${activeTab === 'images' ? '' : 'grayscale opacity-70'}`}>🖼️</span>
               <span>画像を選ぶ</span>
             </button>
             <button
               onClick={() => setActiveTab('requests')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-all relative ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-xl font-medium text-sm sm:text-base transition-all duration-200 relative ${
                 activeTab === 'requests'
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <span className="text-lg">📋</span>
+              <span className={`text-lg ${activeTab === 'requests' ? '' : 'grayscale opacity-70'}`}>📋</span>
               <span>申請履歴</span>
               {myRequests.filter((r) => r.status === 'approved').length > 0 && activeTab !== 'requests' && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 text-xs bg-green-500 text-white rounded-full flex items-center justify-center animate-bounce">
+                <span className="absolute -top-2 -right-1 sm:right-4 min-w-5 h-5 px-1.5 text-xs bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-full flex items-center justify-center animate-pulse shadow-lg">
                   {myRequests.filter((r) => r.status === 'approved').length}
                 </span>
               )}
@@ -638,19 +696,21 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ガイダンス（初回表示風） */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-          <span className="text-xl shrink-0">💡</span>
+        {/* ガイダンス - モダンスタイル */}
+        <div className="mb-4 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex items-start gap-3">
+          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+            <span className="text-lg">💡</span>
+          </div>
           <div className="text-sm text-blue-800">
             {activeTab === 'images' ? (
               <>
-                <span className="font-medium">使いたい画像をタップ</span>して申請してください。
-                承認されるとダウンロードできます。
+                <span className="font-semibold">使いたい画像をタップ</span>して申請してください。
+                <span className="text-blue-600">承認されるとダウンロードできます。</span>
               </>
             ) : (
               <>
-                申請の<span className="font-medium">ステータスを確認</span>できます。
-                「ダウンロード可」になったら画像を取得しましょう。
+                申請の<span className="font-semibold">ステータスを確認</span>できます。
+                <span className="text-blue-600">「ダウンロード可」になったら画像を取得しましょう。</span>
               </>
             )}
           </div>
@@ -888,23 +948,58 @@ export default function Home() {
           </>
         ) : (
           <>
-            {/* 申請サマリーカード */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-yellow-400">
-                <p className="text-2xl font-bold text-yellow-600">{myRequests.filter(r => r.status === 'pending').length}</p>
-                <p className="text-xs text-gray-500">承認待ち</p>
+            {/* 申請サマリーカード - モダンデザイン */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="group relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-amber-50 rounded-full blur-2xl" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">⏳</span>
+                    <span className="text-xs text-gray-500">承認待ち</span>
+                  </div>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                    {myRequests.filter(r => r.status === 'pending').length}
+                  </p>
+                </div>
               </div>
-              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-green-400">
-                <p className="text-2xl font-bold text-green-600">{myRequests.filter(r => r.status === 'approved').length}</p>
-                <p className="text-xs text-gray-500">DL可能</p>
+              <div className="group relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-full blur-2xl" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📥</span>
+                    <span className="text-xs text-gray-500">DL可能</span>
+                  </div>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-green-500 bg-clip-text text-transparent">
+                    {myRequests.filter(r => r.status === 'approved').length}
+                  </p>
+                  {myRequests.filter(r => r.status === 'approved').length > 0 && (
+                    <span className="absolute top-2 right-2 w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                  )}
+                </div>
               </div>
-              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-blue-400">
-                <p className="text-2xl font-bold text-blue-600">{myRequests.filter(r => r.status === 'downloaded').length}</p>
-                <p className="text-xs text-gray-500">DL済み</p>
+              <div className="group relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-full blur-2xl" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">✅</span>
+                    <span className="text-xs text-gray-500">DL済み</span>
+                  </div>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+                    {myRequests.filter(r => r.status === 'downloaded').length}
+                  </p>
+                </div>
               </div>
-              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-gray-400">
-                <p className="text-2xl font-bold text-gray-600">{myRequests.filter(r => r.status === 'rejected' || r.status === 'expired').length}</p>
-                <p className="text-xs text-gray-500">却下/期限切れ</p>
+              <div className="group relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-gray-50 rounded-full blur-2xl" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📝</span>
+                    <span className="text-xs text-gray-500">却下/期限切れ</span>
+                  </div>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-gray-400 to-gray-500 bg-clip-text text-transparent">
+                    {myRequests.filter(r => r.status === 'rejected' || r.status === 'expired').length}
+                  </p>
+                </div>
               </div>
             </div>
 
