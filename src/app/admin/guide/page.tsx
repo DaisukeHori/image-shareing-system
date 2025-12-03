@@ -26,7 +26,7 @@ export default function AdminGuidePage() {
           <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">🚀</span>
           クイックスタート
         </h2>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
               step: 1,
@@ -40,7 +40,7 @@ export default function AdminGuidePage() {
               step: 2,
               icon: '🖼️',
               title: 'ファイル追加',
-              desc: 'フォルダを作成して画像・動画をアップロード',
+              desc: 'フォルダを作成して画像をアップロード',
               href: '/admin/images',
               color: 'emerald',
             },
@@ -50,7 +50,15 @@ export default function AdminGuidePage() {
               title: '申請を承認',
               desc: 'ユーザーの申請を処理',
               href: '/admin/requests',
-              color: 'violet',
+              color: 'amber',
+            },
+            {
+              step: 4,
+              icon: '📅',
+              title: '掲載終了確認',
+              desc: '期限後の削除確認を行う',
+              href: '/admin/requests',
+              color: 'rose',
             },
           ].map((item) => (
             <Link
