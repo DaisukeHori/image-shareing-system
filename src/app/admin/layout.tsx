@@ -6,12 +6,14 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 
 const navigation = [
-  { name: 'ダッシュボード', href: '/admin' },
-  { name: '所属管理', href: '/admin/departments' },
-  { name: 'ユーザー管理', href: '/admin/users' },
-  { name: 'ファイル管理', href: '/admin/images' },
-  { name: '承認申請一覧', href: '/admin/requests' },
-  { name: '透かし検証', href: '/admin/watermark' },
+  { name: 'ダッシュボード', href: '/admin', icon: '📊' },
+  { name: '所属管理', href: '/admin/departments', icon: '🏢' },
+  { name: 'ユーザー管理', href: '/admin/users', icon: '👥' },
+  { name: 'フォルダ管理', href: '/admin/folders', icon: '📁' },
+  { name: 'ファイル管理', href: '/admin/images', icon: '🖼️' },
+  { name: '承認申請一覧', href: '/admin/requests', icon: '📋' },
+  { name: '透かし検証', href: '/admin/watermark', icon: '🔍' },
+  { name: '使い方ガイド', href: '/admin/guide', icon: '📖' },
 ];
 
 export default function AdminLayout({
@@ -102,12 +104,13 @@ export default function AdminLayout({
                     <Link
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`block px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700'
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                     >
+                      <span className="text-lg">{item.icon}</span>
                       {item.name}
                     </Link>
                   </li>

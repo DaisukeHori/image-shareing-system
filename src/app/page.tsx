@@ -556,6 +556,13 @@ export default function Home() {
             </div>
             {/* デスクトップメニュー */}
             <div className="hidden sm:flex items-center gap-4">
+              <Link
+                href="/guide"
+                className="px-3 py-1.5 text-sm text-white/70 hover:text-white transition-colors flex items-center gap-1"
+              >
+                <span>📖</span>
+                使い方
+              </Link>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg">
                 <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {session?.user?.name?.charAt(0) || 'U'}
@@ -598,6 +605,14 @@ export default function Home() {
                       <p className="text-xs text-gray-500">ログイン中</p>
                     </div>
                   </div>
+                  <Link
+                    href="/guide"
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                    onClick={() => setShowMenu(false)}
+                  >
+                    <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">📖</span>
+                    使い方ガイド
+                  </Link>
                   {session?.user?.role === 'admin' && (
                     <Link
                       href="/admin"
@@ -630,7 +645,7 @@ export default function Home() {
             className="group mb-4 relative overflow-hidden rounded-2xl shadow-xl cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500" />
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30" />
+            <div className="absolute inset-0 bg-white/10" />
             <div className="relative p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 sm:gap-4">
