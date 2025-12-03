@@ -91,37 +91,6 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
               </div>
             </section>
 
-            {/* アクセス権限 */}
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 text-sm">🔐</span>
-                アクセス権限
-              </h3>
-              <div className="grid sm:grid-cols-3 gap-2">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">👁️</span>
-                    <span className="font-medium text-gray-900 text-sm">閲覧のみ</span>
-                  </div>
-                  <p className="text-xs text-gray-500">見るだけ、申請不可</p>
-                </div>
-                <div className="bg-blue-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">📥</span>
-                    <span className="font-medium text-gray-900 text-sm">ダウンロード可</span>
-                  </div>
-                  <p className="text-xs text-gray-500">閲覧＋申請が可能</p>
-                </div>
-                <div className="bg-emerald-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">✏️</span>
-                    <span className="font-medium text-gray-900 text-sm">編集可</span>
-                  </div>
-                  <p className="text-xs text-gray-500">すべての操作が可能</p>
-                </div>
-              </div>
-            </section>
-
             {/* 掲載終了について */}
             <section>
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -182,9 +151,9 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
               </h3>
               <div className="space-y-2">
                 {[
-                  { q: '申請後どのくらいで承認されますか？', a: '通常1〜2営業日以内に承認されます。' },
+                  { q: '掲載終了日とは何ですか？', a: '画像の使用を終了する予定日です。この日を過ぎたら、ホットペッパーやSNSなど使用していた場所から画像を削除し、削除確認ボタンを押してください。' },
                   { q: '申請をキャンセルできますか？', a: '承認待ちの状態であれば「申請履歴」からキャンセルできます。' },
-                  { q: 'ダウンロード期限はありますか？', a: '承認から7日以内にダウンロードしてください。' },
+                  { q: 'ダウンロード期限はありますか？', a: '承認から7日以内にダウンロードしてください。期限を過ぎると再申請が必要です。' },
                   { q: '一部のフォルダが見えません', a: 'アクセス権限があるフォルダのみ表示されます。管理者にお問い合わせください。' },
                 ].map((item, i) => (
                   <details key={i} className="bg-gray-50 rounded-xl overflow-hidden group">
