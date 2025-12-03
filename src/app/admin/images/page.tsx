@@ -1201,7 +1201,6 @@ export default function ImagesPage() {
                   <input
                     ref={folderInputRef}
                     type="file"
-                    accept="image/*,video/*"
                     /* @ts-expect-error webkitdirectory is not in types */
                     webkitdirectory="true"
                     onChange={(e) => { handleFolderUpload(e); setShowUploadMenu(false); }}
