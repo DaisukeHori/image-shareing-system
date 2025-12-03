@@ -696,25 +696,54 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ガイダンス - モダンスタイル */}
-        <div className="mb-4 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex items-start gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-            <span className="text-lg">💡</span>
+        {/* 使い方ガイド - 展開可能 */}
+        <details className="mb-4 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group">
+          <summary className="p-4 cursor-pointer flex items-center justify-between hover:bg-gray-50 transition-colors list-none">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <span className="text-xl">📖</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">使い方ガイド</h3>
+                <p className="text-xs text-gray-500">初めての方はこちらをご覧ください</p>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="p-4 pt-0 border-t border-gray-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+              {[
+                { step: 1, icon: '🔍', title: '画像を探す', desc: 'フォルダから画像を選択' },
+                { step: 2, icon: '📝', title: '申請する', desc: '利用目的を入力して申請' },
+                { step: 3, icon: '⏳', title: '承認を待つ', desc: '管理者が確認します' },
+                { step: 4, icon: '📥', title: 'ダウンロード', desc: '承認後にDL可能' },
+              ].map((item) => (
+                <div key={item.step} className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-3 text-center border border-gray-100">
+                  <div className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold mx-auto mb-2">
+                    {item.step}
+                  </div>
+                  <span className="text-xl block mb-1">{item.icon}</span>
+                  <p className="font-medium text-gray-900 text-xs">{item.title}</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">⚠️</span>
+                <div className="text-xs text-amber-800">
+                  <p className="font-medium mb-1">注意事項</p>
+                  <ul className="space-y-0.5 text-amber-700">
+                    <li>• ダウンロードした画像は申請した目的以外に使用しないでください</li>
+                    <li>• 掲載期限を過ぎたら速やかに削除してください</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="text-sm text-blue-800">
-            {activeTab === 'images' ? (
-              <>
-                <span className="font-semibold">使いたい画像をタップ</span>して申請してください。
-                <span className="text-blue-600">承認されるとダウンロードできます。</span>
-              </>
-            ) : (
-              <>
-                申請の<span className="font-semibold">ステータスを確認</span>できます。
-                <span className="text-blue-600">「ダウンロード可」になったら画像を取得しましょう。</span>
-              </>
-            )}
-          </div>
-        </div>
+        </details>
 
         {activeTab === 'images' ? (
           <>

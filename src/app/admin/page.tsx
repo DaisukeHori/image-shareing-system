@@ -246,6 +246,65 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* 使い方ガイド */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">📖</span>
+            管理者ガイド
+          </h2>
+        </div>
+        <div className="p-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                step: 1,
+                icon: '👤',
+                title: 'ユーザー登録',
+                desc: 'まずユーザーを追加します',
+                href: '/admin/users'
+              },
+              {
+                step: 2,
+                icon: '📁',
+                title: 'フォルダ作成',
+                desc: '画像を整理するフォルダを作成',
+                href: '/admin/folders'
+              },
+              {
+                step: 3,
+                icon: '🖼️',
+                title: 'ファイル追加',
+                desc: '画像・動画をアップロード',
+                href: '/admin/images'
+              },
+              {
+                step: 4,
+                icon: '✅',
+                title: '申請を承認',
+                desc: 'ユーザーの申請を処理',
+                href: '/admin/requests'
+              },
+            ].map((item) => (
+              <a
+                key={item.step}
+                href={item.href}
+                className="group relative block"
+              >
+                <div className="bg-gray-50 rounded-xl p-4 text-center h-full hover:bg-blue-50 hover:border-blue-200 border border-transparent transition-all">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-3 group-hover:scale-110 transition-transform">
+                    {item.step}
+                  </div>
+                  <span className="text-2xl mb-2 block">{item.icon}</span>
+                  <p className="font-medium text-gray-900 text-sm group-hover:text-blue-700 transition-colors">{item.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* システムステータス */}
       <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl p-5 border border-gray-200">
         <div className="flex items-center justify-between">
