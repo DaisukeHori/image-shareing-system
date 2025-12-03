@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import HelpTip from '@/components/HelpTip';
 import ConfirmModal from '@/components/ConfirmModal';
+
+type DepartmentSortKey = 'name' | 'manager';
+type SortOrder = 'asc' | 'desc';
 
 interface User {
   id: string;
@@ -42,6 +45,34 @@ export default function DepartmentsPage() {
   // 一括選択
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  // ソート
+  const [sortKey, setSortKey] = useState<DepartmentSortKey>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // ソート済みデータ
+  const sortedDepartments = useMemo(() => {
+    return [...departments].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === 'name') {
+        comparison = a.name.localeCompare(b.name, 'ja');
+      } else if (sortKey === 'manager') {
+        const aManager = a.manager?.name || '';
+        const bManager = b.manager?.name || '';
+        comparison = aManager.localeCompare(bManager, 'ja');
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [departments, sortKey, sortOrder]);
+
+  // ソート切り替え
+  function handleSort(key: DepartmentSortKey) {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  }
 
   useEffect(() => {
     fetchData();
@@ -327,7 +358,7 @@ export default function DepartmentsPage() {
 
       {/* モバイル用カードビュー */}
       <div className="sm:hidden space-y-3">
-        {departments.map((dept) => (
+        {sortedDepartments.map((dept) => (
           <div key={dept.id} className={`bg-white shadow rounded-lg p-4 ${selectedIds.has(dept.id) ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="flex gap-3">
               <input
@@ -383,11 +414,27 @@ export default function DepartmentsPage() {
                   className="h-4 w-4 text-blue-600 rounded border-gray-300"
                 />
               </th>
-              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                所属名
+              <th
+                className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('name')}
+              >
+                <div className="flex items-center gap-1">
+                  所属名
+                  {sortKey === 'name' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
-              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                所属長
+              <th
+                className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('manager')}
+              >
+                <div className="flex items-center gap-1">
+                  所属長
+                  {sortKey === 'manager' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
               <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
@@ -395,7 +442,7 @@ export default function DepartmentsPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {departments.map((dept) => (
+            {sortedDepartments.map((dept) => (
               <tr key={dept.id} className={selectedIds.has(dept.id) ? 'bg-blue-50' : ''}>
                 <td className="px-4 py-4">
                   <input

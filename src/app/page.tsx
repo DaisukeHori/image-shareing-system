@@ -103,7 +103,7 @@ export default function Home() {
   // 掲載終了確認
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
   // エラーモーダル
-　const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   // 並び替え
   const [sortKey, setSortKey] = useState<SortKey>('filename');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
