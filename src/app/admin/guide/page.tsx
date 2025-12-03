@@ -26,7 +26,7 @@ export default function AdminGuidePage() {
           <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">🚀</span>
           クイックスタート
         </h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-3 gap-4">
           {[
             {
               step: 1,
@@ -38,22 +38,14 @@ export default function AdminGuidePage() {
             },
             {
               step: 2,
-              icon: '📁',
-              title: 'フォルダ作成',
-              desc: '画像を整理するフォルダを作成',
-              href: '/admin/folders',
+              icon: '🖼️',
+              title: 'ファイル追加',
+              desc: 'フォルダを作成して画像・動画をアップロード',
+              href: '/admin/images',
               color: 'emerald',
             },
             {
               step: 3,
-              icon: '🖼️',
-              title: 'ファイル追加',
-              desc: '画像・動画をアップロード',
-              href: '/admin/images',
-              color: 'amber',
-            },
-            {
-              step: 4,
               icon: '✅',
               title: '申請を承認',
               desc: 'ユーザーの申請を処理',
@@ -77,6 +69,49 @@ export default function AdminGuidePage() {
         </div>
       </section>
 
+      {/* 所属管理 */}
+      <section>
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">🏢</span>
+          所属管理
+        </h2>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-bold text-gray-900 mb-2">所属（部署）とは？</h4>
+              <p className="text-sm text-gray-600">
+                「所属」はユーザーをグループ分けするための機能です。
+                店舗名、部署名、チーム名など、組織に合わせて自由に作成できます。
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-2">所属を使うメリット</h4>
+              <ul className="text-sm text-gray-600 space-y-2 list-disc list-inside ml-2">
+                <li><strong>権限の一括設定</strong>：フォルダへのアクセス権限を所属単位で設定できます。個別にユーザーを指定する手間が省けます。</li>
+                <li><strong>ユーザーの管理</strong>：どのユーザーがどの部署に属しているか一目でわかります。</li>
+                <li><strong>申請の管理</strong>：申請一覧で所属ごとにフィルタリングできます。</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-2">所属の設定方法</h4>
+              <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside ml-2">
+                <li>「所属管理」メニューから新しい所属を作成します</li>
+                <li>「ユーザー管理」でユーザーを編集し、所属を割り当てます</li>
+                <li>「フォルダ管理」でフォルダの権限を所属単位で設定できます</li>
+              </ol>
+            </div>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <h4 className="font-bold text-blue-800 mb-2">💡 活用例</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• 「渋谷店」「新宿店」などの店舗ごとに所属を作成</li>
+                <li>• 店舗ごとに閲覧できるフォルダを分ける</li>
+                <li>• 新人が入社したら該当店舗の所属に追加するだけでOK</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ユーザー管理 */}
       <section>
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -91,14 +126,15 @@ export default function AdminGuidePage() {
                 ユーザーの追加
               </h4>
               <p className="text-sm text-gray-600 ml-8">
-                「ユーザー管理」→「新規作成」から、名前・メールアドレス・パスワードを入力して追加します。
-                部署を設定すると、後で管理しやすくなります。
+                「ユーザー管理」→「新規作成」から、名前・メールアドレスを入力して追加します。
+                ログイン認証はAzure ADで行うため、パスワードはこのシステムでは管理しません。
+                所属（部署）を設定すると、権限管理がしやすくなります。
               </p>
             </div>
             <div>
               <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs">2</span>
-                権限の種類
+                ユーザーの権限レベル
               </h4>
               <div className="ml-8 space-y-2">
                 <div className="flex items-center gap-2">
@@ -114,39 +150,80 @@ export default function AdminGuidePage() {
             <div>
               <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs">3</span>
-                アクセス権限の設定
+                所属の割り当て
               </h4>
               <p className="text-sm text-gray-600 ml-8">
-                ユーザーごとにフォルダへのアクセス権限を設定できます。
-                「閲覧のみ」「ダウンロード可」「編集可」の3段階があります。
+                ユーザーを所属（部署）に割り当てることで、フォルダへのアクセス権限を所属単位で管理できます。
+                1人のユーザーを複数の所属に割り当てることも可能です。
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* フォルダ管理 */}
+      {/* アクセス権限 */}
       <section>
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">📁</span>
-          フォルダ管理
+          <span className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">🔐</span>
+          アクセス権限の種類
         </h2>
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="space-y-6">
-            <div>
-              <h4 className="font-bold text-gray-900 mb-2">フォルダの作成</h4>
-              <p className="text-sm text-gray-600">
-                「フォルダ管理」→「新規作成」でフォルダを作成します。
-                親フォルダを選択すると階層構造を作れます（例：2024年 → 春 → キャンペーン）
-              </p>
+          <p className="text-sm text-gray-600 mb-6">
+            フォルダごとに、ユーザーまたは所属に対して以下の3段階のアクセス権限を設定できます。
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+              <div className="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-2xl">👁️</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-3 py-1 text-sm bg-gray-600 text-white rounded-full font-medium">閲覧のみ</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  フォルダ内の画像を<strong>見ることだけ</strong>ができます。
+                  ダウンロード申請はできません。プレビュー表示のみ可能です。
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-gray-900 mb-2">フォルダごとの権限</h4>
-              <p className="text-sm text-gray-600">
-                フォルダには複数のユーザーや部署に対して権限を設定できます。
-                子フォルダは親フォルダの権限を継承しますが、個別に上書きも可能です。
-              </p>
+            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
+              <div className="w-12 h-12 bg-blue-200 rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-2xl">📥</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-3 py-1 text-sm bg-blue-600 text-white rounded-full font-medium">ダウンロード可</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  画像の閲覧に加えて、<strong>ダウンロード申請</strong>ができます。
+                  申請後、管理者の承認を経てダウンロードが可能になります。
+                  一般ユーザーにはこの権限を設定することが多いです。
+                </p>
+              </div>
             </div>
+            <div className="flex items-start gap-4 p-4 bg-emerald-50 rounded-xl">
+              <div className="w-12 h-12 bg-emerald-200 rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-2xl">✏️</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-3 py-1 text-sm bg-emerald-600 text-white rounded-full font-medium">編集可</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  すべての操作が可能です。閲覧・申請に加えて、
+                  <strong>画像のアップロード、削除、移動</strong>ができます。
+                  管理者や特定の担当者にのみ付与することを推奨します。
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <h4 className="font-bold text-amber-800 mb-2">⚠️ 注意点</h4>
+            <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+              <li>権限が設定されていないユーザーは、そのフォルダにアクセスできません</li>
+              <li>親フォルダの権限は子フォルダに自動的に継承されます</li>
+              <li>子フォルダで個別に権限を設定すると、継承された権限を上書きできます</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -160,9 +237,17 @@ export default function AdminGuidePage() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="space-y-6">
             <div>
+              <h4 className="font-bold text-gray-900 mb-2">フォルダの作成・管理</h4>
+              <p className="text-sm text-gray-600">
+                「ファイル管理」画面でフォルダを作成・削除・移動できます。
+                階層構造で整理することで、画像を分類しやすくなります（例：2024年 → 春 → キャンペーン）。
+                フォルダにはアクセス権限を設定できます。
+              </p>
+            </div>
+            <div>
               <h4 className="font-bold text-gray-900 mb-2">画像のアップロード</h4>
               <p className="text-sm text-gray-600">
-                「ファイル管理」→「アップロード」で画像や動画をアップロードできます。
+                「アップロード」ボタンで画像や動画をアップロードできます。
                 複数ファイルを一度に選択することも可能です。
               </p>
             </div>
@@ -257,8 +342,8 @@ export default function AdminGuidePage() {
         <div className="space-y-3">
           {[
             {
-              q: 'ユーザーのパスワードを忘れた場合は？',
-              a: 'ユーザー管理から該当ユーザーを編集し、新しいパスワードを設定してください。',
+              q: 'ユーザーがログインできない場合は？',
+              a: 'ログイン認証はAzure ADで管理されています。Azure ADの管理画面でユーザーアカウントの状態を確認するか、IT管理者にお問い合わせください。',
             },
             {
               q: '誤って画像を削除してしまった場合は？',
@@ -269,8 +354,16 @@ export default function AdminGuidePage() {
               a: 'ダウンロード前であれば、履歴から該当の申請を取り消すことができます。',
             },
             {
-              q: '部署を追加するには？',
-              a: 'ユーザー管理画面の「部署管理」から新しい部署を追加できます。',
+              q: '所属（部署）を追加するには？',
+              a: 'サイドメニューの「所属管理」から新しい所属を追加できます。その後、ユーザー管理でユーザーに所属を割り当てます。',
+            },
+            {
+              q: 'フォルダにアクセスできないと言われた場合は？',
+              a: 'そのユーザー（または所属）に対してフォルダのアクセス権限が設定されているか確認してください。権限が未設定の場合、フォルダは表示されません。',
+            },
+            {
+              q: '一般ユーザーにどの権限を設定すればいいですか？',
+              a: '通常は「ダウンロード可」を設定します。これにより画像の閲覧と申請が可能になります。「編集可」は管理者など特定の担当者のみに設定してください。',
             },
           ].map((item, i) => (
             <details key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden group">

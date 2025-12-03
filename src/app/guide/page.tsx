@@ -135,6 +135,47 @@ export default function GuidePage() {
           </div>
         </section>
 
+        {/* アクセス権限について */}
+        <section className="mb-12">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold">🔐</span>
+            アクセス権限について
+          </h3>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-sm text-gray-600 mb-4">
+              フォルダごとにアクセス権限が設定されています。あなたの権限によって、できることが異なります。
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <span className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">👁️</span>
+                <div>
+                  <span className="font-medium text-gray-900">閲覧のみ</span>
+                  <p className="text-xs text-gray-500">画像を見ることはできますが、ダウンロード申請はできません</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                <span className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center">📥</span>
+                <div>
+                  <span className="font-medium text-gray-900">ダウンロード可</span>
+                  <p className="text-xs text-gray-500">画像の閲覧とダウンロード申請ができます（通常はこの権限です）</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl">
+                <span className="w-10 h-10 bg-emerald-200 rounded-lg flex items-center justify-center">✏️</span>
+                <div>
+                  <span className="font-medium text-gray-900">編集可</span>
+                  <p className="text-xs text-gray-500">閲覧・申請に加えて、画像のアップロードや削除もできます</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-sm text-amber-700">
+                💡 アクセスできないフォルダがある場合は、管理者にお問い合わせください
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* 申請の仕方 */}
         <section className="mb-12">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -303,6 +344,18 @@ export default function GuidePage() {
               {
                 q: '掲載期限を延長したい場合は？',
                 a: '新しく申請し直す必要があります。現在の申請の掲載終了確認後、再申請してください。',
+              },
+              {
+                q: '一部のフォルダが見えません',
+                a: 'フォルダはアクセス権限があるものだけが表示されます。必要なフォルダにアクセスできない場合は、管理者に権限の付与を依頼してください。',
+              },
+              {
+                q: '画像は見れるけど申請ボタンがありません',
+                a: 'そのフォルダに対して「閲覧のみ」の権限が設定されています。ダウンロード申請が必要な場合は、管理者に「ダウンロード可」の権限を依頼してください。',
+              },
+              {
+                q: 'ログインできません',
+                a: 'ログインはAzure ADで認証されます。パスワードを忘れた場合はIT管理者にお問い合わせください。',
               },
             ].map((item, i) => (
               <details key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden group">
