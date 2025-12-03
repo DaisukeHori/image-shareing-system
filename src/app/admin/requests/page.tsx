@@ -25,7 +25,7 @@ interface ApprovalRequest {
   id: string;
   request_number: string;
   user: User;
-  image: Image;
+  image: Image | null;
   purpose: string;
   purpose_type: PurposeType | null;
   purpose_other: string | null;
@@ -100,13 +100,11 @@ export default function RequestsPage() {
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
-        // 画像が削除された申請を除外
-        const validRequests = data.data.filter((r: ApprovalRequest) => r.image !== null);
         // 履歴タブの場合はpending以外を表示
         if (activeTab === 'history' && !statusFilter) {
-          setRequests(validRequests.filter((r: ApprovalRequest) => r.status !== 'pending'));
+          setRequests(data.data.filter((r: ApprovalRequest) => r.status !== 'pending'));
         } else {
-          setRequests(validRequests);
+          setRequests(data.data);
         }
       }
     } catch (error) {
@@ -373,39 +371,45 @@ export default function RequestsPage() {
             }`}
           >
             <div className="flex gap-3 mb-3">
-              {isVideo(request.image) ? (
-                <div
-                  className="w-16 h-16 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex-shrink-0 cursor-pointer flex items-center justify-center relative overflow-hidden"
-                  onClick={() => setPreviewImage({
-                    url: getImageUrl(request.image.preview_path || request.image.storage_path),
-                    filename: request.image.original_filename,
-                    isVideo: true
-                  })}
-                >
-                  {request.image.thumbnail_path ? (
-                    <img
-                      src={getImageUrl(request.image.thumbnail_path)}
-                      alt=""
-                      className="w-full h-full object-cover absolute inset-0"
-                    />
-                  ) : null}
-                  <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center relative z-10">
-                    <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+              {request.image ? (
+                isVideo(request.image) ? (
+                  <div
+                    className="w-16 h-16 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex-shrink-0 cursor-pointer flex items-center justify-center relative overflow-hidden"
+                    onClick={() => setPreviewImage({
+                      url: getImageUrl(request.image!.preview_path || request.image!.storage_path),
+                      filename: request.image!.original_filename,
+                      isVideo: true
+                    })}
+                  >
+                    {request.image.thumbnail_path ? (
+                      <img
+                        src={getImageUrl(request.image.thumbnail_path)}
+                        alt=""
+                        className="w-full h-full object-cover absolute inset-0"
+                      />
+                    ) : null}
+                    <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center relative z-10">
+                      <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <img
+                    src={getImageUrl(request.image.storage_path)}
+                    alt=""
+                    className="w-16 h-16 rounded object-cover flex-shrink-0 cursor-pointer"
+                    onClick={() => setPreviewImage({
+                      url: getImageUrl(request.image!.storage_path),
+                      filename: request.image!.original_filename,
+                      isVideo: false
+                    })}
+                  />
+                )
               ) : (
-                <img
-                  src={getImageUrl(request.image.storage_path)}
-                  alt=""
-                  className="w-16 h-16 rounded object-cover flex-shrink-0 cursor-pointer"
-                  onClick={() => setPreviewImage({
-                    url: getImageUrl(request.image.storage_path),
-                    filename: request.image.original_filename,
-                    isVideo: false
-                  })}
-                />
+                <div className="w-16 h-16 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-400 text-xs">削除済</span>
+                </div>
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -579,40 +583,46 @@ export default function RequestsPage() {
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    {isVideo(request.image) ? (
-                      <div
-                        className="w-10 h-10 rounded bg-gradient-to-br from-gray-700 to-gray-900 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center relative overflow-hidden"
-                        onClick={() => setPreviewImage({
-                          url: getImageUrl(request.image.preview_path || request.image.storage_path),
-                          filename: request.image.original_filename,
-                          isVideo: true
-                        })}
-                      >
-                        {request.image.thumbnail_path ? (
-                          <img
-                            src={getImageUrl(request.image.thumbnail_path)}
-                            alt=""
-                            className="w-full h-full object-cover absolute inset-0"
-                          />
-                        ) : null}
-                        <svg className="w-4 h-4 text-white ml-0.5 relative z-10" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
+                    {request.image ? (
+                      isVideo(request.image) ? (
+                        <div
+                          className="w-10 h-10 rounded bg-gradient-to-br from-gray-700 to-gray-900 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center relative overflow-hidden"
+                          onClick={() => setPreviewImage({
+                            url: getImageUrl(request.image!.preview_path || request.image!.storage_path),
+                            filename: request.image!.original_filename,
+                            isVideo: true
+                          })}
+                        >
+                          {request.image.thumbnail_path ? (
+                            <img
+                              src={getImageUrl(request.image.thumbnail_path)}
+                              alt=""
+                              className="w-full h-full object-cover absolute inset-0"
+                            />
+                          ) : null}
+                          <svg className="w-4 h-4 text-white ml-0.5 relative z-10" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <img
+                          src={getImageUrl(request.image.storage_path)}
+                          alt=""
+                          className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setPreviewImage({
+                            url: getImageUrl(request.image!.storage_path),
+                            filename: request.image!.original_filename,
+                            isVideo: false
+                          })}
+                        />
+                      )
                     ) : (
-                      <img
-                        src={getImageUrl(request.image.storage_path)}
-                        alt=""
-                        className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setPreviewImage({
-                          url: getImageUrl(request.image.storage_path),
-                          filename: request.image.original_filename,
-                          isVideo: false
-                        })}
-                      />
+                      <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+                        <span className="text-gray-400 text-[8px]">削除済</span>
+                      </div>
                     )}
                     <span className="ml-2 text-sm text-gray-500 max-w-[100px] truncate">
-                      {request.image.original_filename}
+                      {request.image?.original_filename || '（削除済）'}
                     </span>
                   </div>
                 </td>
@@ -863,35 +873,41 @@ export default function RequestsPage() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                {isVideo(detailModal.image) ? (
-                  <div
-                    className="w-20 h-20 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center cursor-pointer"
-                    onClick={() => setPreviewImage({
-                      url: getImageUrl(detailModal.image.storage_path),
-                      filename: detailModal.image.original_filename,
-                      isVideo: true
-                    })}
-                  >
-                    <div className="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
+                {detailModal.image ? (
+                  isVideo(detailModal.image) ? (
+                    <div
+                      className="w-20 h-20 rounded bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center cursor-pointer"
+                      onClick={() => setPreviewImage({
+                        url: getImageUrl(detailModal.image!.storage_path),
+                        filename: detailModal.image!.original_filename,
+                        isVideo: true
+                      })}
+                    >
+                      <div className="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <img
+                      src={getImageUrl(detailModal.image.storage_path)}
+                      alt=""
+                      className="w-20 h-20 rounded object-cover cursor-pointer"
+                      onClick={() => setPreviewImage({
+                        url: getImageUrl(detailModal.image!.storage_path),
+                        filename: detailModal.image!.original_filename,
+                        isVideo: false
+                      })}
+                    />
+                  )
                 ) : (
-                  <img
-                    src={getImageUrl(detailModal.image.storage_path)}
-                    alt=""
-                    className="w-20 h-20 rounded object-cover cursor-pointer"
-                    onClick={() => setPreviewImage({
-                      url: getImageUrl(detailModal.image.storage_path),
-                      filename: detailModal.image.original_filename,
-                      isVideo: false
-                    })}
-                  />
+                  <div className="w-20 h-20 rounded bg-gray-200 flex items-center justify-center">
+                    <span className="text-gray-400 text-xs">削除済</span>
+                  </div>
                 )}
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{detailModal.image.original_filename}</p>
+                  <p className="text-sm font-medium text-gray-900">{detailModal.image?.original_filename || '（削除された画像）'}</p>
                   <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${statusLabels[detailModal.status].class}`}>
                     {statusLabels[detailModal.status].text}
                   </span>
