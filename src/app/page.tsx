@@ -42,9 +42,6 @@ interface ApprovalRequest {
   approver_comment: string | null;
   rejection_reason: string | null;
   approver: { id: string; name: string } | null;
-  usage_end_date: string | null;
-  deletion_confirmed_user: boolean;
-  deletion_confirmed_approver: boolean;
 }
 
 const statusLabels: Record<string, { text: string; class: string }> = {
@@ -78,7 +75,6 @@ export default function Home() {
   const [purpose, setPurpose] = useState('');
   const [purposeType, setPurposeType] = useState<PurposeType | ''>('');
   const [purposeOther, setPurposeOther] = useState('');
-  const [usageEndDate, setUsageEndDate] = useState('');
   const [requesterComment, setRequesterComment] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -101,8 +97,6 @@ export default function Home() {
   const [downloading, setDownloading] = useState(false);
   // 申請詳細モーダル
   const [requestDetailModal, setRequestDetailModal] = useState<ApprovalRequest | null>(null);
-  // 掲載終了確認
-  const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
   // エラーモーダル
   const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   // 並び替え
@@ -261,7 +255,7 @@ export default function Home() {
 
   async function handleSubmitRequest(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedImage || !purposeType || !usageEndDate || !agreedToTerms) return;
+    if (!selectedImage || !purposeType || !agreedToTerms) return;
     if (purposeType === 'other' && !purposeOther.trim()) return;
 
     setSubmitting(true);
@@ -274,7 +268,6 @@ export default function Home() {
           image_id: selectedImage.id,
           purpose_type: purposeType,
           purpose_other: purposeType === 'other' ? purposeOther.trim() : null,
-          usage_end_date: usageEndDate,
           requester_comment: requesterComment.trim() || null,
           agreed_to_terms: true,
         }),
@@ -286,7 +279,6 @@ export default function Home() {
         setPurpose('');
         setPurposeType('');
         setPurposeOther('');
-        setUsageEndDate('');
         setRequesterComment('');
         setAgreedToTerms(false);
         setRequestStep(1);
@@ -312,7 +304,6 @@ export default function Home() {
     setPurpose('');
     setPurposeType('');
     setPurposeOther('');
-    setUsageEndDate('');
     setRequesterComment('');
     setAgreedToTerms(false);
     setRequestStep(1);
@@ -372,58 +363,6 @@ export default function Home() {
     } finally {
       setCancelling(false);
     }
-  }
-
-  // 掲載終了確認処理
-  async function handleConfirmDeletion(requestId: string) {
-    setConfirmingDeletionId(requestId);
-
-    try {
-      const res = await fetch('/api/requests/confirm-deletion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
-      } else {
-        setErrorModal({
-          title: '確認できません',
-          message: data.error || '確認に失敗しました',
-        });
-      }
-    } catch (error) {
-      console.error('Failed to confirm deletion:', error);
-      setErrorModal({
-        title: 'エラー',
-        message: '確認に失敗しました',
-      });
-    } finally {
-      setConfirmingDeletionId(null);
-    }
-  }
-
-  // 掲載期限切れかどうかをチェック（掲載終了日の翌日0時以降が期限切れ）
-  function isExpiredUsage(usageEndDate: string | null) {
-    if (!usageEndDate) return false;
-    const endDate = new Date(usageEndDate);
-    endDate.setDate(endDate.getDate() + 1); // 翌日の0時
-    return new Date() >= endDate;
-  }
-
-  // 最大利用期限日（1年後）を計算
-  function getMaxEndDate() {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() + 1);
-    return date.toISOString().split('T')[0];
-  }
-
-  // 最小利用期限日（明日）を計算
-  function getMinEndDate() {
-    const date = new Date();
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().split('T')[0];
   }
 
   async function handleDownload(requestId: string) {
@@ -1099,33 +1038,6 @@ export default function Home() {
                           キャンセル
                         </button>
                       )}
-                      {/* 掲載期限切れのダウンロード済み申請 */}
-                      {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && (
-                        <div className="mt-3 p-2 bg-orange-50 rounded border border-orange-200">
-                          <p className="text-xs text-orange-700 mb-2">
-                            掲載期限: {new Date(request.usage_end_date).toLocaleDateString('ja-JP')}（終了）
-                          </p>
-                          {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
-                            <span className="text-xs text-green-600 font-medium">掲載終了確認済</span>
-                          ) : (
-                            <>
-                              <p className="text-xs text-red-600 mb-2">
-                                {!request.deletion_confirmed_user && '本人未確認 '}
-                                {!request.deletion_confirmed_approver && '承認者未確認'}
-                              </p>
-                              {!request.deletion_confirmed_user && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleConfirmDeletion(request.id); }}
-                                  disabled={confirmingDeletionId === request.id}
-                                  className="w-full px-3 py-2 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700 disabled:opacity-50"
-                                >
-                                  {confirmingDeletionId === request.id ? '確認中...' : '掲載終了を確認'}
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1215,18 +1127,6 @@ export default function Home() {
                                 >
                                   キャンセル
                                 </button>
-                              )}
-                              {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && !request.deletion_confirmed_user && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleConfirmDeletion(request.id); }}
-                                  disabled={confirmingDeletionId === request.id}
-                                  className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 disabled:opacity-50"
-                                >
-                                  {confirmingDeletionId === request.id ? '確認中...' : '掲載終了確認'}
-                                </button>
-                              )}
-                              {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && request.deletion_confirmed_user && request.deletion_confirmed_approver && (
-                                <span className="text-xs text-green-600 font-medium">確認済</span>
                               )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); setRequestDetailModal(request); }}
@@ -1375,29 +1275,6 @@ export default function Home() {
                       </div>
                     )}
 
-                    {/* 掲載終了日 */}
-                    <div className="mb-4">
-                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
-                        掲載終了日 *
-                        <HelpTip
-                          title="掲載終了日とは？"
-                          content="画像の使用を終了する予定日です。この日を過ぎたら、掲載した画像を削除する必要があります。最長1年まで設定可能です。"
-                          size="sm"
-                        />
-                      </label>
-                      <input
-                        type="date"
-                        value={usageEndDate}
-                        onChange={(e) => setUsageEndDate(e.target.value)}
-                        min={getMinEndDate()}
-                        max={getMaxEndDate()}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        1年以内の日付を選択してください。期限後は削除確認が必要です。
-                      </p>
-                    </div>
-
                     {/* 承認者へのコメント */}
                     <div className="mb-4">
                       <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
@@ -1428,7 +1305,7 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={goToConsentStep}
-                        disabled={!purposeType || !usageEndDate || (purposeType === 'other' && !purposeOther.trim())}
+                        disabled={!purposeType || (purposeType === 'other' && !purposeOther.trim())}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                       >
                         次へ
@@ -1803,8 +1680,7 @@ export default function Home() {
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-700">
                 ※ダウンロードは<strong>1回のみ</strong>可能です。<br />
-                ※ダウンロードした画像には電子透かしが埋め込まれます。<br />
-                ※掲載終了日を過ぎたら必ず削除してください。
+                ※ダウンロードした画像には電子透かしが埋め込まれます。
               </p>
             </div>
 

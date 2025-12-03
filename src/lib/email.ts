@@ -11,7 +11,6 @@ interface ApprovalRequest {
   purpose: string;
   purpose_type?: string | null;
   purpose_other?: string | null;
-  usage_end_date?: string | null;
   requester_comment?: string | null;
   image: {
     id: string;
@@ -152,11 +151,6 @@ export async function sendApprovalRequestEmail(
       purposeDisplay = request.purpose;
     }
 
-    // 掲載終了日のフォーマット
-    const usageEndDateDisplay = request.usage_end_date
-      ? new Date(request.usage_end_date).toLocaleDateString('ja-JP')
-      : '未設定';
-
     const emailContent = `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
         <h2 style="color: #333; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">カットモデル画像 利用申請</h2>
@@ -180,10 +174,6 @@ export async function sendApprovalRequestEmail(
             <tr>
               <td style="padding: 8px 0; color: #64748b;">利用目的:</td>
               <td style="padding: 8px 0; color: #1e293b;">${purposeDisplay}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #64748b;">掲載終了日:</td>
-              <td style="padding: 8px 0; color: #1e293b;">${usageEndDateDisplay}</td>
             </tr>
           </table>
         </div>
@@ -264,11 +254,6 @@ export async function sendRequestConfirmationEmail(
     purposeDisplay = request.purpose;
   }
 
-  // 掲載終了日のフォーマット
-  const usageEndDateDisplay = request.usage_end_date
-    ? new Date(request.usage_end_date).toLocaleDateString('ja-JP')
-    : '未設定';
-
   const emailContent = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
       <h2 style="color: #333; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">カットモデル画像 利用申請を受け付けました</h2>
@@ -290,10 +275,6 @@ export async function sendRequestConfirmationEmail(
           <tr>
             <td style="padding: 8px 0; color: #64748b;">利用目的:</td>
             <td style="padding: 8px 0; color: #1e293b;">${purposeDisplay}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b;">掲載終了日:</td>
-            <td style="padding: 8px 0; color: #1e293b;">${usageEndDateDisplay}</td>
           </tr>
         </table>
       </div>
@@ -437,97 +418,6 @@ export async function sendApprovalResultEmail(
     console.log(`Result email sent to ${requester.email}`);
   } catch (error) {
     console.error(`Failed to send result email:`, error);
-    throw error;
-  }
-}
-
-interface DeletionReminderParams {
-  requestNumber: string;
-  imageName: string;
-  usageEndDate: string;
-  userName: string;
-  confirmUrl: string;
-}
-
-export async function sendDeletionReminderEmail(
-  to: string,
-  params: DeletionReminderParams,
-  role: 'user' | 'approver'
-) {
-  const { requestNumber, imageName, usageEndDate, userName, confirmUrl } = params;
-  const roleLabel = role === 'user' ? '申請者' : '承認者';
-  const formattedDate = new Date(usageEndDate).toLocaleDateString('ja-JP');
-
-  const emailContent = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px;">
-      <h2 style="color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">【重要】レンタルフォト削除確認のお願い</h2>
-
-      <p style="color: #333; font-size: 16px;">
-        以下のレンタルフォトの掲載期限が過ぎています。<br>
-        該当するデータを削除し、確認ボタンを押してください。
-      </p>
-
-      <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #fecaca;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; width: 120px;">申請番号:</td>
-            <td style="padding: 8px 0; color: #1e293b; font-weight: bold;">${requestNumber}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b;">申請者:</td>
-            <td style="padding: 8px 0; color: #1e293b;">${userName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #64748b;">ファイル名:</td>
-            <td style="padding: 8px 0; color: #1e293b;">${imageName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #dc2626; font-weight: bold;">掲載終了日:</td>
-            <td style="padding: 8px 0; color: #dc2626; font-weight: bold;">${formattedDate}</td>
-          </tr>
-        </table>
-      </div>
-
-      <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #fde68a;">
-        <p style="color: #92400e; font-weight: bold; margin: 0 0 8px 0;">削除すべきデータ:</p>
-        <ul style="color: #92400e; margin: 0; padding-left: 20px;">
-          <li>パソコン内のデータ</li>
-          <li>スマートフォン内のデータ</li>
-          <li>クラウドストレージ</li>
-          <li>SNSの下書き</li>
-          <li>その他の保存場所</li>
-        </ul>
-      </div>
-
-      <div style="margin: 30px 0; text-align: center;">
-        ${createEmailButton(confirmUrl, `削除を確認する（${roleLabel}）`, '#2563eb', { width: 250, height: 48 })}
-      </div>
-
-      <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
-        <p style="color: #dc2626; font-size: 13px; margin: 0; font-weight: bold;">
-          ※ ${roleLabel}と${role === 'user' ? '承認者' : '申請者'}の両方が確認するまで、毎日このメールが送信されます。
-        </p>
-      </div>
-
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-
-      <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-        このメールはレボル カットモデル画像管理システムから自動送信されています。
-      </p>
-    </div>
-  `;
-
-  try {
-    await sgMail.send({
-      to,
-      from: process.env.SENDGRID_FROM_EMAIL!,
-      subject: `【要対応】レンタルフォト削除確認 (${requestNumber})`,
-      html: emailContent,
-    });
-
-    console.log(`Deletion reminder email sent to ${to}`);
-  } catch (error) {
-    console.error(`Failed to send deletion reminder email to ${to}:`, error);
     throw error;
   }
 }

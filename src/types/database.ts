@@ -74,7 +74,6 @@ export interface ApprovalRequest {
   purpose: string;
   purpose_type: PurposeType | null;
   purpose_other: string | null;
-  usage_end_date: string | null;
   agreed_to_terms: boolean;
   requester_comment: string | null;
   approver_comment: string | null;
@@ -87,11 +86,6 @@ export interface ApprovalRequest {
   expires_at: string | null;
   downloaded_at: string | null;
   download_count: number;
-  deletion_confirmed_user: boolean;
-  deletion_confirmed_user_at: string | null;
-  deletion_confirmed_approver: boolean;
-  deletion_confirmed_approver_at: string | null;
-  deletion_reminder_sent_at: string | null;
   created_at: string;
   updated_at: string;
 }
