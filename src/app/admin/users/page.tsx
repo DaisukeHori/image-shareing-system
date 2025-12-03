@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import HelpTip from '@/components/HelpTip';
 import ConfirmModal from '@/components/ConfirmModal';
+
+type UserSortKey = 'name' | 'email' | 'department' | 'role' | 'status';
+type SortOrder = 'asc' | 'desc';
 
 interface Department {
   id: string;
@@ -51,6 +54,40 @@ export default function UsersPage() {
   // 一括選択
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  // ソート
+  const [sortKey, setSortKey] = useState<UserSortKey>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // ソート済みデータ
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === 'name') {
+        comparison = a.name.localeCompare(b.name, 'ja');
+      } else if (sortKey === 'email') {
+        comparison = a.email.localeCompare(b.email);
+      } else if (sortKey === 'department') {
+        const aDept = a.department?.name || '';
+        const bDept = b.department?.name || '';
+        comparison = aDept.localeCompare(bDept, 'ja');
+      } else if (sortKey === 'role') {
+        comparison = a.role.localeCompare(b.role);
+      } else if (sortKey === 'status') {
+        comparison = (a.is_active === b.is_active) ? 0 : a.is_active ? -1 : 1;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [users, sortKey, sortOrder]);
+
+  // ソート切り替え
+  function handleSort(key: UserSortKey) {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  }
 
   useEffect(() => {
     fetchData();
@@ -347,7 +384,7 @@ export default function UsersPage() {
 
       {/* モバイル用カードビュー */}
       <div className="sm:hidden space-y-3">
-        {users.map((user) => (
+        {sortedUsers.map((user) => (
           <div key={user.id} className={`bg-white shadow rounded-lg p-4 ${selectedIds.has(user.id) ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="flex gap-3">
               <input
@@ -427,20 +464,60 @@ export default function UsersPage() {
                   className="h-4 w-4 text-blue-600 rounded border-gray-300"
                 />
               </th>
-              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                名前
+              <th
+                className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('name')}
+              >
+                <div className="flex items-center gap-1">
+                  名前
+                  {sortKey === 'name' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
-              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                メール
+              <th
+                className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('email')}
+              >
+                <div className="flex items-center gap-1">
+                  メール
+                  {sortKey === 'email' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
-              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                所属
+              <th
+                className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('department')}
+              >
+                <div className="flex items-center gap-1">
+                  所属
+                  {sortKey === 'department' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
-              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                権限
+              <th
+                className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('role')}
+              >
+                <div className="flex items-center gap-1">
+                  権限
+                  {sortKey === 'role' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
-              <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                状態
+              <th
+                className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('status')}
+              >
+                <div className="flex items-center gap-1">
+                  状態
+                  {sortKey === 'status' && (
+                    <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
               <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
@@ -448,7 +525,7 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((user) => (
+            {sortedUsers.map((user) => (
               <tr key={user.id} className={selectedIds.has(user.id) ? 'bg-blue-50' : ''}>
                 <td className="px-4 py-4">
                   <input
