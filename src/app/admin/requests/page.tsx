@@ -279,8 +279,22 @@ export default function RequestsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">読み込み中...</div>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex justify-between items-center">
+          <div className="h-8 w-48 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-28 bg-gray-200 rounded-lg" />
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gray-200 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -289,9 +303,10 @@ export default function RequestsPage() {
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
   return (
-    <div>
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex items-center gap-3">
+    <div className="space-y-6">
+      {/* ヘッダー */}
+      <div>
+        <div className="flex items-center gap-3 mb-1">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">承認申請管理</h1>
           <HelpTip
             title="申請管理について"
@@ -300,6 +315,58 @@ export default function RequestsPage() {
           />
         </div>
         <p className="text-sm text-gray-500">ユーザーからの画像利用申請を管理します</p>
+      </div>
+
+      {/* 使い方ガイド */}
+      <details className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group">
+        <summary className="p-4 cursor-pointer flex items-center justify-between hover:bg-gray-50 transition-colors list-none">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <span className="text-xl">📖</span>
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">申請処理ガイド</h3>
+              <p className="text-xs text-gray-500">承認・却下の流れを確認</p>
+            </div>
+          </div>
+          <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <div className="p-4 pt-0 border-t border-gray-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+            {[
+              { step: 1, icon: '👀', title: '内容確認', desc: '申請者と利用目的を確認' },
+              { step: 2, icon: '✅', title: '承認', desc: '問題なければ承認' },
+              { step: 3, icon: '📥', title: 'DL待ち', desc: 'ユーザーがDL可能に' },
+              { step: 4, icon: '🔍', title: '管理', desc: '履歴で状況を確認' },
+            ].map((item) => (
+              <div key={item.step} className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-3 text-center border border-gray-100">
+                <div className="w-7 h-7 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold mx-auto mb-2">
+                  {item.step}
+                </div>
+                <span className="text-xl block mb-1">{item.icon}</span>
+                <p className="font-medium text-gray-900 text-xs">{item.title}</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="flex items-start gap-2">
+              <span className="text-lg">💡</span>
+              <div className="text-xs text-blue-800">
+                <p className="font-medium mb-1">ポイント</p>
+                <ul className="space-y-0.5 text-blue-700">
+                  <li>• 承認時にコメントを残すと、ユーザーに伝わります</li>
+                  <li>• 却下する場合は理由を必ず記入してください</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div className="flex flex-col gap-4">
 
         {/* タブ */}
         <div className="flex gap-2 items-center">
