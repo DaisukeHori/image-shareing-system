@@ -8,6 +8,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role: 'admin' | 'user';
 }
 
 interface Department {
@@ -462,7 +463,7 @@ export default function DepartmentsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    所属長
+                    所属長（管理者のみ）
                   </label>
                   <select
                     value={formData.manager_user_id}
@@ -472,7 +473,7 @@ export default function DepartmentsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="">未設定</option>
-                    {users.map((user) => (
+                    {users.filter(user => user.role === 'admin').map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.name} ({user.email})
                       </option>
