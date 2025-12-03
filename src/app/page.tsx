@@ -556,6 +556,13 @@ export default function Home() {
             </div>
             {/* デスクトップメニュー */}
             <div className="hidden sm:flex items-center gap-4">
+              <Link
+                href="/guide"
+                className="px-3 py-1.5 text-sm text-white/70 hover:text-white transition-colors flex items-center gap-1"
+              >
+                <span>📖</span>
+                使い方
+              </Link>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg">
                 <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {session?.user?.name?.charAt(0) || 'U'}
@@ -598,6 +605,14 @@ export default function Home() {
                       <p className="text-xs text-gray-500">ログイン中</p>
                     </div>
                   </div>
+                  <Link
+                    href="/guide"
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                    onClick={() => setShowMenu(false)}
+                  >
+                    <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">📖</span>
+                    使い方ガイド
+                  </Link>
                   {session?.user?.role === 'admin' && (
                     <Link
                       href="/admin"
