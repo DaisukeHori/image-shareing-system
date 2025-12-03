@@ -543,8 +543,18 @@ export default function RequestsPage() {
           </div>
         ))}
         {requests.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-            申請がありません
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-full flex items-center justify-center">
+              <span className="text-3xl">{activeTab === 'pending' ? '✨' : '📋'}</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {activeTab === 'pending' ? 'すべて処理済み！' : '履歴がありません'}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {activeTab === 'pending'
+                ? '承認待ちの申請はありません'
+                : '過去の申請履歴がありません'}
+            </p>
           </div>
         )}
       </div>
@@ -752,8 +762,18 @@ export default function RequestsPage() {
             ))}
             {requests.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
-                  申請がありません
+                <td colSpan={8} className="px-6 py-12 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-full flex items-center justify-center">
+                    <span className="text-3xl">{activeTab === 'pending' ? '✨' : '📋'}</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {activeTab === 'pending' ? 'すべて処理済み！' : '履歴がありません'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {activeTab === 'pending'
+                      ? '承認待ちの申請はありません'
+                      : '過去の申請履歴がありません'}
+                  </p>
                 </td>
               </tr>
             )}

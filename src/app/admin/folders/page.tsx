@@ -190,8 +190,20 @@ export default function FoldersPage() {
             {renderFolderTree(folders)}
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-500">
-            フォルダが登録されていません
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-yellow-50 rounded-full flex items-center justify-center">
+              <span className="text-3xl">📁</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">フォルダがありません</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              最初のフォルダを作成して<br />画像を整理しましょう
+            </p>
+            <button
+              onClick={() => openModal()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              📁 フォルダを作成
+            </button>
           </div>
         )}
       </div>
