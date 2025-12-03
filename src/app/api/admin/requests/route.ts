@@ -38,7 +38,9 @@ export async function GET(request: NextRequest) {
           original_filename,
           storage_path,
           file_type,
-          mime_type
+          mime_type,
+          thumbnail_path,
+          preview_path
         ),
         approver:users!approval_requests_approved_by_fkey (
           id,
