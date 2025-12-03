@@ -2,6 +2,50 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 
+// CSVの1行を解析する関数（ダブルクォートと空フィールド対応）
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+
+  fields.push(current.trim());
+  return fields;
+}
+
+// タブ区切りかカンマ区切りかを判定して行を解析
+function parseLine(line: string): string[] {
+  if (line.includes('\t')) {
+    return line.split('\t').map(f => f.replace(/^"|"$/g, '').trim());
+  }
+  return parseCSVLine(line);
+}
+
 // CSVエクスポート
 export async function GET() {
   try {
@@ -78,6 +122,31 @@ export async function POST(request: NextRequest) {
     const text = await file.text();
     const lines = text.split('\n').filter(line => line.trim());
 
+    if (lines.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'ファイルが空です' },
+        { status: 400 }
+      );
+    }
+
+    // ヘッダー行を解析してチェック
+    const headerFields = parseLine(lines[0]);
+    const expectedHeaders = ['所属名', '所属長メールアドレス'];
+
+    // 最初のカラムが「所属名」かチェック
+    const headerValid = headerFields[0] === '所属名' ||
+      headerFields[0]?.toLowerCase() === '所属名';
+
+    if (!headerValid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `CSVのヘッダー形式が不正です。期待される形式: ${expectedHeaders.join(', ')}。実際のヘッダー: ${headerFields.join(', ')}`
+        },
+        { status: 400 }
+      );
+    }
+
     // ヘッダー行をスキップ
     const dataLines = lines.slice(1);
 
@@ -100,15 +169,16 @@ export async function POST(request: NextRequest) {
       const line = dataLines[i];
       const lineNumber = i + 2; // ヘッダー行 + 0-indexed
 
-      // CSV解析（簡易版：ダブルクォート対応）
-      const matches = line.match(/("([^"]*)"|[^,]*)/g);
-      if (!matches || matches.length < 1) {
+      // タブ区切りかカンマ区切りかを判定して解析
+      const fields = parseLine(line);
+
+      if (fields.length < 1) {
         results.errors.push(`行${lineNumber}: 形式が不正です`);
         continue;
       }
 
-      const name = matches[0]?.replace(/^"|"$/g, '').trim();
-      const managerEmail = matches[1]?.replace(/^"|"$/g, '').trim() || '';
+      const name = fields[0] || '';
+      const managerEmail = fields[1] || '';
 
       if (!name) {
         results.errors.push(`行${lineNumber}: 所属名が空です`);

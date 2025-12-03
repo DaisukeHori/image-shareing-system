@@ -48,6 +48,9 @@ export default function UsersPage() {
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 一括選択
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -148,6 +151,64 @@ export default function UsersPage() {
         } catch (error) {
           console.error('Failed to delete:', error);
           alert('削除に失敗しました');
+        }
+      },
+    });
+  }
+
+  // 一括選択の切り替え
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }
+
+  // 全選択/全解除
+  function toggleSelectAll() {
+    if (selectedIds.size === users.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(users.map(u => u.id)));
+    }
+  }
+
+  // 一括削除
+  function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'ユーザーの一括削除',
+      message: `選択した ${selectedIds.size} 名のユーザーを削除しますか？`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setDeleting(true);
+
+        try {
+          const res = await fetch('/api/admin/users/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: Array.from(selectedIds) }),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            setSelectedIds(new Set());
+            fetchData();
+          } else {
+            alert(data.error || 'エラーが発生しました');
+          }
+        } catch (error) {
+          console.error('Failed to bulk delete:', error);
+          alert('削除に失敗しました');
+        } finally {
+          setDeleting(false);
         }
       },
     });
@@ -268,55 +329,81 @@ export default function UsersPage() {
         <HelpTip content="所属名が存在しない場合は自動的に作成されます。権限は「admin」または「管理者」で管理者に設定できます。" />
       </div>
 
+      {/* 一括削除ボタン */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 p-3 bg-red-50 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-red-700">
+            {selectedIds.size} 名選択中
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={deleting}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm"
+          >
+            {deleting ? '削除中...' : '選択した項目を削除'}
+          </button>
+        </div>
+      )}
+
       {/* モバイル用カードビュー */}
       <div className="sm:hidden space-y-3">
         {users.map((user) => (
-          <div key={user.id} className="bg-white shadow rounded-lg p-4">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <span className="font-medium text-gray-900">{user.name}</span>
-                {user.is_ceo && (
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
-                    社長
-                  </span>
-                )}
+          <div key={user.id} className={`bg-white shadow rounded-lg p-4 ${selectedIds.has(user.id) ? 'ring-2 ring-blue-500' : ''}`}>
+            <div className="flex gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(user.id)}
+                onChange={() => toggleSelect(user.id)}
+                className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300"
+              />
+              <div className="flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="font-medium text-gray-900">{user.name}</span>
+                    {user.is_ceo && (
+                      <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
+                        社長
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <span
+                      className={`px-2 py-0.5 text-xs rounded ${
+                        user.role === 'admin'
+                          ? 'bg-purple-100 text-purple-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {user.role === 'admin' ? '管理者' : '一般'}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 text-xs rounded ${
+                        user.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {user.is_active ? '有効' : '無効'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                <p className="text-sm text-gray-500">{user.department?.name || '未所属'}</p>
+                <div className="mt-3 flex gap-3">
+                  <button
+                    onClick={() => openModal(user)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => handleDelete(user.id)}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <span
-                  className={`px-2 py-0.5 text-xs rounded ${
-                    user.role === 'admin'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {user.role === 'admin' ? '管理者' : '一般'}
-                </span>
-                <span
-                  className={`px-2 py-0.5 text-xs rounded ${
-                    user.is_active
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}
-                >
-                  {user.is_active ? '有効' : '無効'}
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 truncate">{user.email}</p>
-            <p className="text-sm text-gray-500">{user.department?.name || '未所属'}</p>
-            <div className="mt-3 flex gap-3">
-              <button
-                onClick={() => openModal(user)}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                編集
-              </button>
-              <button
-                onClick={() => handleDelete(user.id)}
-                className="text-sm text-red-600 hover:text-red-800"
-              >
-                削除
-              </button>
             </div>
           </div>
         ))}
@@ -332,6 +419,14 @@ export default function UsersPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={users.length > 0 && selectedIds.size === users.length}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                />
+              </th>
               <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 名前
               </th>
@@ -354,7 +449,15 @@ export default function UsersPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {users.map((user) => (
-              <tr key={user.id}>
+              <tr key={user.id} className={selectedIds.has(user.id) ? 'bg-blue-50' : ''}>
+                <td className="px-4 py-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(user.id)}
+                    onChange={() => toggleSelect(user.id)}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                  />
+                </td>
                 <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <span className="text-sm font-medium text-gray-900">
@@ -413,7 +516,7 @@ export default function UsersPage() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   ユーザーが登録されていません
                 </td>
               </tr>

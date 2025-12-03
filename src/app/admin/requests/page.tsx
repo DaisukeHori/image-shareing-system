@@ -74,6 +74,7 @@ export default function RequestsPage() {
   const [previewImage, setPreviewImage] = useState<{ url: string; filename: string; isVideo: boolean } | null>(null);
   const [resultModal, setResultModal] = useState<{ type: 'approve' | 'reject'; requestNumber: string } | null>(null);
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
 
   const [exportLoading, setExportLoading] = useState(false);
 
@@ -125,11 +126,17 @@ export default function RequestsPage() {
       if (data.success) {
         fetchRequests();
       } else {
-        alert(data.error || '確認に失敗しました');
+        setErrorModal({
+          title: '確認できません',
+          message: data.error || '確認に失敗しました',
+        });
       }
     } catch (error) {
       console.error('Confirm deletion error:', error);
-      alert('確認に失敗しました');
+      setErrorModal({
+        title: 'エラー',
+        message: '確認に失敗しました',
+      });
     } finally {
       setConfirmingDeletionId(null);
     }
@@ -211,9 +218,12 @@ export default function RequestsPage() {
     return new Date(dateString).toLocaleDateString('ja-JP');
   }
 
+  // 掲載期限切れかどうかをチェック（掲載終了日の翌日0時以降が期限切れ）
   function isExpiredUsage(usageEndDate: string | null) {
     if (!usageEndDate) return false;
-    return new Date(usageEndDate) < new Date();
+    const endDate = new Date(usageEndDate);
+    endDate.setDate(endDate.getDate() + 1); // 翌日の0時
+    return new Date() >= endDate;
   }
 
   function getImageUrl(storagePath: string) {
@@ -1037,6 +1047,29 @@ export default function RequestsPage() {
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-red-600 hover:bg-red-700'
               }`}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* エラーモーダル */}
+      {errorModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{errorModal.title}</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {errorModal.message}
+            </p>
+            <button
+              onClick={() => setErrorModal(null)}
+              className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
             >
               閉じる
             </button>

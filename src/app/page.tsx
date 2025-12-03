@@ -103,7 +103,7 @@ export default function Home() {
   // 掲載終了確認
   const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
   // エラーモーダル
-  const [errorModal, setErrorModal] = useState<string | null>(null);
+　const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   // 並び替え
   const [sortKey, setSortKey] = useState<SortKey>('filename');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -385,21 +385,28 @@ export default function Home() {
       if (data.success) {
         fetchData();
       } else {
-        setErrorModal(data.error || '確認に失敗しました');
+        setErrorModal({
+          title: '確認できません',
+          message: data.error || '確認に失敗しました',
+        });
       }
     } catch (error) {
       console.error('Failed to confirm deletion:', error);
-      setErrorModal('確認に失敗しました');
+      setErrorModal({
+        title: 'エラー',
+        message: '確認に失敗しました',
+      });
     } finally {
       setConfirmingDeletionId(null);
     }
   }
 
-  // 掲載期限切れかどうかをチェック（日付のみで比較、APIと同じロジック）
+  // 掲載期限切れかどうかをチェック（掲載終了日の翌日0時以降が期限切れ）
   function isExpiredUsage(usageEndDate: string | null) {
     if (!usageEndDate) return false;
-    const today = new Date().toISOString().split('T')[0];
-    return usageEndDate < today; // 文字列比較で日付のみ比較
+    const endDate = new Date(usageEndDate);
+    endDate.setDate(endDate.getDate() + 1); // 翌日の0時
+    return new Date() >= endDate;
   }
 
   // 最大利用期限日（1年後）を計算
@@ -1695,9 +1702,9 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">エラー</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{errorModal.title}</h3>
             <p className="text-sm text-gray-600 mb-4">
-              {errorModal}
+              {errorModal.message}
             </p>
             <button
               onClick={() => setErrorModal(null)}
