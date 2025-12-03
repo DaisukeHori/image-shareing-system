@@ -38,6 +38,9 @@ export default function DepartmentsPage() {
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 一括選択
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -127,6 +130,64 @@ export default function DepartmentsPage() {
         } catch (error) {
           console.error('Failed to delete:', error);
           alert('削除に失敗しました');
+        }
+      },
+    });
+  }
+
+  // 一括選択の切り替え
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }
+
+  // 全選択/全解除
+  function toggleSelectAll() {
+    if (selectedIds.size === departments.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(departments.map(d => d.id)));
+    }
+  }
+
+  // 一括削除
+  function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: '所属の一括削除',
+      message: `選択した ${selectedIds.size} 件の所属を削除しますか？`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setDeleting(true);
+
+        try {
+          const res = await fetch('/api/admin/departments/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: Array.from(selectedIds) }),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            setSelectedIds(new Set());
+            fetchData();
+          } else {
+            alert(data.error || 'エラーが発生しました');
+          }
+        } catch (error) {
+          console.error('Failed to bulk delete:', error);
+          alert('削除に失敗しました');
+        } finally {
+          setDeleting(false);
         }
       },
     });
@@ -247,31 +308,57 @@ export default function DepartmentsPage() {
         <HelpTip content="同じ所属名がある場合は所属長のみ更新されます。所属長はユーザーとして先に登録されている必要があります。" />
       </div>
 
+      {/* 一括削除ボタン */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 p-3 bg-red-50 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-red-700">
+            {selectedIds.size} 件選択中
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={deleting}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm"
+          >
+            {deleting ? '削除中...' : '選択した項目を削除'}
+          </button>
+        </div>
+      )}
+
       {/* モバイル用カードビュー */}
       <div className="sm:hidden space-y-3">
         {departments.map((dept) => (
-          <div key={dept.id} className="bg-white shadow rounded-lg p-4">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="font-medium text-gray-900">{dept.name}</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  所属長: {dept.manager?.name || '未設定'}
-                </p>
+          <div key={dept.id} className={`bg-white shadow rounded-lg p-4 ${selectedIds.has(dept.id) ? 'ring-2 ring-blue-500' : ''}`}>
+            <div className="flex gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(dept.id)}
+                onChange={() => toggleSelect(dept.id)}
+                className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300"
+              />
+              <div className="flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-medium text-gray-900">{dept.name}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      所属長: {dept.manager?.name || '未設定'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-3">
+                  <button
+                    onClick={() => openModal(dept)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => handleDelete(dept.id)}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="mt-3 flex gap-3">
-              <button
-                onClick={() => openModal(dept)}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                編集
-              </button>
-              <button
-                onClick={() => handleDelete(dept.id)}
-                className="text-sm text-red-600 hover:text-red-800"
-              >
-                削除
-              </button>
             </div>
           </div>
         ))}
@@ -287,6 +374,14 @@ export default function DepartmentsPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={departments.length > 0 && selectedIds.size === departments.length}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                />
+              </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 所属名
               </th>
@@ -300,7 +395,15 @@ export default function DepartmentsPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {departments.map((dept) => (
-              <tr key={dept.id}>
+              <tr key={dept.id} className={selectedIds.has(dept.id) ? 'bg-blue-50' : ''}>
+                <td className="px-4 py-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(dept.id)}
+                    onChange={() => toggleSelect(dept.id)}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                  />
+                </td>
                 <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {dept.name}
                 </td>
@@ -325,7 +428,7 @@ export default function DepartmentsPage() {
             ))}
             {departments.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                   所属が登録されていません
                 </td>
               </tr>
