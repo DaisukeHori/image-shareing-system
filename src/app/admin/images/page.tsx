@@ -1158,10 +1158,14 @@ export default function ImagesPage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ファイル管理</h1>
-          <HelpTip content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロード可能。チェックボックスで複数選択し、一括移動・削除・権限設定ができます。選択したアイテムをドラッグして別のフォルダに移動することも可能です。" />
+          <HelpTip
+            title="ファイル管理とは？"
+            content="フォルダと画像を管理します。ドラッグ＆ドロップでアップロード可能。チェックボックスで複数選択し、一括移動・削除・権限設定ができます。"
+            highlight
+          />
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -1332,7 +1336,11 @@ export default function ImagesPage() {
             <span className="text-sm text-gray-600">
               📁 {breadcrumbs[breadcrumbs.length - 1]?.name}
             </span>
-            <HelpTip content="フォルダ権限は、フォルダ内の画像に動的に適用されます。画像を別フォルダに移動すると、移動先フォルダの権限が適用されます（画像個別の権限設定がある場合はそちらが優先）。" />
+            <HelpTip
+                title="フォルダ権限について"
+                content="フォルダ権限は、フォルダ内の画像に動的に適用されます。画像を別フォルダに移動すると、移動先フォルダの権限が適用されます（画像個別の権限設定がある場合はそちらが優先）。"
+                size="sm"
+              />
           </div>
           <button
             onClick={() => {
@@ -1356,7 +1364,11 @@ export default function ImagesPage() {
               {selectedImageIds.size > 0 && `${selectedImageIds.size}画像`}
               {' '}選択中
             </span>
-            <HelpTip content="選択したアイテムをドラッグして別のフォルダやパンくずリストにドロップすると移動できます。「権限設定」で一括権限変更、「移動」で移動先選択、「削除」で一括削除が可能です。" />
+            <HelpTip
+                title="一括操作のヒント"
+                content="選択したアイテムをドラッグして別のフォルダにドロップすると移動できます。「権限設定」で一括権限変更、「移動」で移動先選択、「削除」で一括削除が可能です。"
+                size="sm"
+              />
           </div>
           <div className="flex flex-wrap gap-2">
             <button

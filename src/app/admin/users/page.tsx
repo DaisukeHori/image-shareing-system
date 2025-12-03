@@ -299,10 +299,14 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ユーザー管理</h1>
-          <HelpTip content="Azure ADに登録されているメールアドレスを持つユーザーを登録します。CSVで一括登録・更新も可能です。" />
+          <HelpTip
+            title="ユーザー管理とは？"
+            content="Azure ADに登録されているメールアドレスを持つユーザーを登録します。CSVで一括登録・更新も可能です。"
+            highlight
+          />
         </div>
         <div className="flex flex-wrap gap-2">
           <button

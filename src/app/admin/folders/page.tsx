@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/components/ConfirmModal';
+import HelpTip from '@/components/HelpTip';
 
 interface Folder {
   id: string;
@@ -165,8 +166,15 @@ export default function FoldersPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">フォルダ管理</h1>
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">フォルダ管理</h1>
+          <HelpTip
+            title="フォルダとは？"
+            content="画像を整理するためのフォルダです。フォルダごとにアクセス権限を設定できます。親フォルダを指定すると、階層構造を作成できます。"
+            highlight
+          />
+        </div>
         <button
           onClick={() => openModal()}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -174,6 +182,7 @@ export default function FoldersPage() {
           新規作成
         </button>
       </div>
+      <p className="text-sm text-gray-500 mb-6">画像を整理するフォルダを管理します</p>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {folders.length > 0 ? (
@@ -181,8 +190,20 @@ export default function FoldersPage() {
             {renderFolderTree(folders)}
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-500">
-            フォルダが登録されていません
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-yellow-50 rounded-full flex items-center justify-center">
+              <span className="text-3xl">📁</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">フォルダがありません</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              最初のフォルダを作成して<br />画像を整理しましょう
+            </p>
+            <button
+              onClick={() => openModal()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              📁 フォルダを作成
+            </button>
           </div>
         )}
       </div>
@@ -211,8 +232,12 @@ export default function FoldersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                     親フォルダ
+                    <HelpTip
+                      content="このフォルダを入れる親フォルダを選択します。ルートに作成する場合は「ルート（なし）」を選択してください。"
+                      size="sm"
+                    />
                   </label>
                   <select
                     value={formData.parent_id}

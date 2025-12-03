@@ -578,47 +578,94 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* タブ */}
-        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
-          <button
-            onClick={() => setActiveTab('images')}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-              activeTab === 'images'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            画像を選ぶ
-          </button>
-          <button
+        {/* ダウンロード可能な申請がある場合のアラートバナー */}
+        {myRequests.filter((r) => r.status === 'approved').length > 0 && (
+          <div
             onClick={() => setActiveTab('requests')}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors relative ${
-              activeTab === 'requests'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
+            className="mb-4 p-3 sm:p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow-lg cursor-pointer hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.01]"
           >
-            申請履歴
-            {myRequests.filter((r) => r.status === 'approved').length > 0 && (
-              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-xs bg-green-500 text-white rounded-full">
-                {myRequests.filter((r) => r.status === 'approved').length}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl sm:text-2xl">📥</span>
+                </div>
+                <div>
+                  <p className="font-bold text-sm sm:text-base">
+                    {myRequests.filter((r) => r.status === 'approved').length}件のダウンロード準備完了！
+                  </p>
+                  <p className="text-xs sm:text-sm text-green-100">
+                    クリックしてダウンロードページへ →
+                  </p>
+                </div>
+              </div>
+              <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {/* タブ - より魅力的に */}
+        <div className="bg-white rounded-xl shadow-sm p-1 mb-4 sm:mb-6">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('images')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-all ${
+                activeTab === 'images'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <span className="text-lg">🖼️</span>
+              <span>画像を選ぶ</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-all relative ${
+                activeTab === 'requests'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <span className="text-lg">📋</span>
+              <span>申請履歴</span>
+              {myRequests.filter((r) => r.status === 'approved').length > 0 && activeTab !== 'requests' && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 text-xs bg-green-500 text-white rounded-full flex items-center justify-center animate-bounce">
+                  {myRequests.filter((r) => r.status === 'approved').length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* ガイダンス（初回表示風） */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+          <span className="text-xl shrink-0">💡</span>
+          <div className="text-sm text-blue-800">
+            {activeTab === 'images' ? (
+              <>
+                <span className="font-medium">使いたい画像をタップ</span>して申請してください。
+                承認されるとダウンロードできます。
+              </>
+            ) : (
+              <>
+                申請の<span className="font-medium">ステータスを確認</span>できます。
+                「ダウンロード可」になったら画像を取得しましょう。
+              </>
             )}
-          </button>
-          <HelpTip content="画像を選んで利用申請を送信します。承認後7日以内に1回だけダウンロードできます。ダウンロード画像には電子透かしが埋め込まれます。" />
+          </div>
         </div>
 
         {activeTab === 'images' ? (
           <>
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-                利用可能な画像
-              </h2>
-              <HelpTip content="【権限レベル】閲覧：申請してダウンロード可能 / DL可：直接ダウンロード可能 / 編集可：画像の編集・削除も可能。権限はフォルダまたは画像ごとに設定されています。" />
-            </div>
-
             {/* パンくずリスト */}
             <div className="flex items-center gap-1 mb-4 text-sm overflow-x-auto pb-2 bg-gray-100 rounded-lg px-3 py-2">
+              <HelpTip
+                title="フォルダ移動"
+                content="クリックすると、そのフォルダに移動できます。「ルート」をクリックすると最上位に戻ります。"
+                size="sm"
+                className="mr-1"
+              />
               <button
                 onClick={() => setCurrentFolderId(null)}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-md whitespace-nowrap ${
@@ -648,6 +695,11 @@ export default function Home() {
 
             {/* 並び替えUI */}
             <div className="flex items-center justify-end gap-2 mb-3">
+              <HelpTip
+                title="並び替え"
+                content="画像の表示順を変更できます。ファイル名順または作成日順で並び替えられます。"
+                size="sm"
+              />
               <span className="text-xs text-gray-600">並び替え:</span>
               <select
                 value={`${sortKey}-${sortOrder}`}
@@ -811,21 +863,51 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">
-                {currentFolderId ? 'このフォルダには画像がありません。' : '利用可能な画像がありません。'}
-                <br />
-                管理者にアクセス権限を申請してください。
+              <div className="bg-white rounded-xl shadow-sm p-8 sm:p-12 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <span className="text-3xl sm:text-4xl">🖼️</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {currentFolderId ? 'このフォルダは空です' : '画像がありません'}
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  {currentFolderId
+                    ? '他のフォルダを確認してみてください'
+                    : 'まだ閲覧できる画像がありません'}
+                </p>
+                {currentFolderId && (
+                  <button
+                    onClick={() => setCurrentFolderId(null)}
+                    className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    ← ルートに戻る
+                  </button>
+                )}
               </div>
             )}
           </>
         ) : (
           <>
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-                申請履歴
-              </h2>
-              <HelpTip content="【ステータス】承認待ち：管理者の承認を待っています / ダウンロード可：7日以内に1回ダウンロードできます / DL済み：ダウンロード完了 / 却下：申請が却下されました / 期限切れ：ダウンロード期限が過ぎました" />
+            {/* 申請サマリーカード */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-yellow-400">
+                <p className="text-2xl font-bold text-yellow-600">{myRequests.filter(r => r.status === 'pending').length}</p>
+                <p className="text-xs text-gray-500">承認待ち</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-green-400">
+                <p className="text-2xl font-bold text-green-600">{myRequests.filter(r => r.status === 'approved').length}</p>
+                <p className="text-xs text-gray-500">DL可能</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-blue-400">
+                <p className="text-2xl font-bold text-blue-600">{myRequests.filter(r => r.status === 'downloaded').length}</p>
+                <p className="text-xs text-gray-500">DL済み</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm border-l-4 border-gray-400">
+                <p className="text-2xl font-bold text-gray-600">{myRequests.filter(r => r.status === 'rejected' || r.status === 'expired').length}</p>
+                <p className="text-xs text-gray-500">却下/期限切れ</p>
+              </div>
             </div>
+
             {myRequests.length > 0 ? (
               <>
                 {/* モバイル用カードビュー */}
@@ -1045,8 +1127,22 @@ export default function Home() {
                 </div>
               </>
             ) : (
-              <div className="bg-white rounded-lg shadow p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">
-                申請履歴がありません
+              <div className="bg-white rounded-xl shadow-sm p-8 sm:p-12 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
+                  <span className="text-3xl sm:text-4xl">📋</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  まだ申請がありません
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  画像を選んで最初の利用申請を<br />送信してみましょう！
+                </p>
+                <button
+                  onClick={() => setActiveTab('images')}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  🖼️ 画像を選ぶ
+                </button>
               </div>
             )}
           </>
@@ -1128,8 +1224,12 @@ export default function Home() {
                   <div>
                     {/* 利用目的選択 */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                         利用目的 *
+                        <HelpTip
+                          content="画像をどこで使用するか選択してください。適切な目的を選ぶことで、承認がスムーズになります。"
+                          size="sm"
+                        />
                       </label>
                       <select
                         value={purposeType}
@@ -1161,8 +1261,13 @@ export default function Home() {
 
                     {/* 掲載終了日 */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                         掲載終了日 *
+                        <HelpTip
+                          title="掲載終了日とは？"
+                          content="画像の使用を終了する予定日です。この日を過ぎたら、掲載した画像を削除する必要があります。最長1年まで設定可能です。"
+                          size="sm"
+                        />
                       </label>
                       <input
                         type="date"
@@ -1179,8 +1284,12 @@ export default function Home() {
 
                     {/* 承認者へのコメント */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                         承認者へのコメント（任意）
+                        <HelpTip
+                          content="承認者に伝えたいことがあれば入力してください。例：「緊急で使用したい」「前回と同じ用途です」など"
+                          size="sm"
+                        />
                       </label>
                       <textarea
                         value={requesterComment}
@@ -1513,7 +1622,15 @@ export default function Home() {
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900">ダウンロード確認</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900">ダウンロード確認</h3>
+                <HelpTip
+                  title="重要"
+                  content="ダウンロードは1回のみです。ダウンロード後は再ダウンロードできませんので、ファイルを大切に保存してください。"
+                  highlight
+                  size="sm"
+                />
+              </div>
               <button
                 onClick={() => setDownloadModal(null)}
                 className="text-gray-500 hover:text-gray-700"
