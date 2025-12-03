@@ -9,7 +9,6 @@ const navigation = [
   { name: 'ダッシュボード', href: '/admin', icon: '📊' },
   { name: '所属管理', href: '/admin/departments', icon: '🏢' },
   { name: 'ユーザー管理', href: '/admin/users', icon: '👥' },
-  { name: 'フォルダ管理', href: '/admin/folders', icon: '📁' },
   { name: 'ファイル管理', href: '/admin/images', icon: '🖼️' },
   { name: '承認申請一覧', href: '/admin/requests', icon: '📋' },
   { name: '透かし検証', href: '/admin/watermark', icon: '🔍' },
