@@ -1525,16 +1525,18 @@ export default function Home() {
             </div>
 
             {/* 画像プレビュー */}
-            <div className="mb-4">
-              <img
-                src={getImageUrl(downloadModal.image.storage_path)}
-                alt={downloadModal.image.original_filename}
-                className="w-full max-h-48 object-contain bg-gray-100 rounded"
-              />
-              <p className="text-sm text-gray-500 mt-2 truncate">
-                {downloadModal.image.original_filename}
-              </p>
-            </div>
+            {downloadModal.image && (
+              <div className="mb-4">
+                <img
+                  src={getImageUrl(downloadModal.image.storage_path)}
+                  alt={downloadModal.image.original_filename}
+                  className="w-full max-h-48 object-contain bg-gray-100 rounded"
+                />
+                <p className="text-sm text-gray-500 mt-2 truncate">
+                  {downloadModal.image.original_filename}
+                </p>
+              </div>
+            )}
 
             {/* 申請情報 */}
             <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
