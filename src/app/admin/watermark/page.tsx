@@ -293,7 +293,7 @@ export default function WatermarkVerifyPage() {
                         電子透かしを検出しました
                       </h4>
                     </div>
-                  <dl className="space-y-2 text-sm">
+                    <dl className="space-y-2 text-sm">
                     <div className="flex">
                       <dt className="w-28 text-gray-500">ダウンロード者:</dt>
                       <dd className="font-medium text-gray-900">
@@ -318,7 +318,8 @@ export default function WatermarkVerifyPage() {
                         {result.watermark?.downloadDate}
                       </dd>
                     </div>
-                  </dl>
+                    </dl>
+                  </div>
                 </div>
 
                 {/* 詳細な申請情報 */}
