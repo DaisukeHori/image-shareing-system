@@ -269,6 +269,58 @@ export default function GuidePage() {
           </div>
         </section>
 
+        {/* 掲載終了の確認 */}
+        <section className="mb-12">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center text-rose-600 font-bold">📅</span>
+            掲載終了日について
+          </h3>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="text-xl">📧</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 mb-1">メールでお知らせが届きます</h4>
+                  <p className="text-sm text-gray-600">
+                    掲載終了日が近づくと、リマインドメールが届きます。
+                    期日を過ぎると、画像の削除確認を促すメールが届きます。
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="text-xl">🗑️</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 mb-1">使用場所から画像を削除</h4>
+                  <p className="text-sm text-gray-600">
+                    掲載終了日を過ぎたら、ホットペッパーやSNSなど使用していた場所から画像を削除してください。
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="text-xl">✅</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 mb-1">削除確認ボタンを押す</h4>
+                  <p className="text-sm text-gray-600">
+                    画像を削除したら、メール内のリンクまたは申請履歴から「削除確認」ボタンを押してください。
+                    管理者も確認ボタンを押すと、申請が完了となります。
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-sm text-amber-700">
+                💡 両者（あなたと管理者）の確認が完了するまで、申請は「掲載終了待ち」の状態になります
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* 注意事項 */}
         <section className="mb-12">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
