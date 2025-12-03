@@ -54,8 +54,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    if (requestData.usage_end_date >= today) {
+    // 掲載終了日の翌日0時より前（つまり掲載終了日当日の23:59まで）なら期限切れ
+    // 例：掲載終了日が12/3なら、12/4 00:00以降が期限切れ
+    const usageEndDate = new Date(requestData.usage_end_date);
+    usageEndDate.setDate(usageEndDate.getDate() + 1); // 翌日
+    if (new Date() < usageEndDate) {
       return NextResponse.json(
         { success: false, error: '掲載期限がまだ切れていません' },
         { status: 400 }
