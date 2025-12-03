@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import HelpTip from '@/components/HelpTip';
 
 interface User {
   id: string;
@@ -290,10 +291,18 @@ export default function RequestsPage() {
   return (
     <div>
       <div className="flex flex-col gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">承認申請管理</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">承認申請管理</h1>
+          <HelpTip
+            title="申請管理について"
+            content="ユーザーからの画像利用申請を承認または却下できます。承認待ちタブで未処理の申請を確認し、履歴タブで過去の処理を確認できます。"
+            highlight
+          />
+        </div>
+        <p className="text-sm text-gray-500">ユーザーからの画像利用申請を管理します</p>
 
         {/* タブ */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <button
             onClick={() => { setActiveTab('pending'); setStatusFilter(''); }}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
@@ -319,22 +328,34 @@ export default function RequestsPage() {
           >
             履歴
           </button>
+          <HelpTip
+            title="タブの使い方"
+            content="【承認待ち】未処理の申請を表示します。承認または却下を行ってください。【履歴】過去に処理した申請を確認できます。ステータスでフィルタリングも可能です。"
+            size="sm"
+          />
         </div>
 
         {/* 履歴タブの場合のみステータスフィルターとCSV出力表示 */}
         {activeTab === 'history' && (
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="">すべての履歴</option>
-              <option value="approved">承認済み</option>
-              <option value="rejected">却下</option>
-              <option value="expired">期限切れ</option>
-              <option value="downloaded">ダウンロード済み</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="">すべての履歴</option>
+                <option value="approved">承認済み</option>
+                <option value="rejected">却下</option>
+                <option value="expired">期限切れ</option>
+                <option value="downloaded">ダウンロード済み</option>
+              </select>
+              <HelpTip
+                title="ステータスの意味"
+                content="承認済み：DL待ち / 却下：申請を拒否 / 期限切れ：DL期限超過 / DL済み：ダウンロード完了"
+                size="sm"
+              />
+            </div>
             <button
               onClick={handleExportCSV}
               disabled={exportLoading}

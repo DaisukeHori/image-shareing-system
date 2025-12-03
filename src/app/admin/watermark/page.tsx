@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import HelpTip from '@/components/HelpTip';
 
 interface WatermarkInfo {
   downloaderName: string;
@@ -170,12 +171,26 @@ export default function WatermarkVerifyPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">電子透かし検証</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-2xl font-bold text-gray-900">電子透かし検証</h1>
+        <HelpTip
+          title="電子透かしとは？"
+          content="ダウンロードした画像には、目に見えない電子透かしが埋め込まれます。この機能で透かしを読み取り、誰がいつダウンロードしたかを確認できます。"
+          highlight
+        />
+      </div>
+      <p className="text-sm text-gray-500 mb-6">不正利用の調査に使用できます</p>
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          画像の透かしを検証
-        </h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            画像の透かしを検証
+          </h2>
+          <HelpTip
+            content="PNG形式のままアップロードしてください。JPEG変換やリサイズをすると透かしが失われます。"
+            size="sm"
+          />
+        </div>
         <p className="text-sm text-gray-500 mb-4">
           ダウンロードされた画像をアップロードすると、埋め込まれた電子透かし情報を読み取って、誰がいつダウンロードしたかを確認できます。
         </p>

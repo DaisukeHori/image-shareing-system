@@ -605,7 +605,11 @@ export default function Home() {
               </span>
             )}
           </button>
-          <HelpTip content="画像を選んで利用申請を送信します。承認後7日以内に1回だけダウンロードできます。ダウンロード画像には電子透かしが埋め込まれます。" />
+          <HelpTip
+            title="使い方"
+            content="画像を選んで利用申請を送信します。承認後7日以内に1回だけダウンロードできます。ダウンロード画像には電子透かしが埋め込まれます。"
+            highlight
+          />
         </div>
 
         {activeTab === 'images' ? (
@@ -614,11 +618,20 @@ export default function Home() {
               <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                 利用可能な画像
               </h2>
-              <HelpTip content="【権限レベル】閲覧：申請してダウンロード可能 / DL可：直接ダウンロード可能 / 編集可：画像の編集・削除も可能。権限はフォルダまたは画像ごとに設定されています。" />
+              <HelpTip
+                title="権限レベルとは？"
+                content="閲覧：申請してダウンロード可能 / DL可：直接ダウンロード可能 / 編集可：画像の編集・削除も可能。権限はフォルダまたは画像ごとに設定されています。"
+              />
             </div>
 
             {/* パンくずリスト */}
             <div className="flex items-center gap-1 mb-4 text-sm overflow-x-auto pb-2 bg-gray-100 rounded-lg px-3 py-2">
+              <HelpTip
+                title="フォルダ移動"
+                content="クリックすると、そのフォルダに移動できます。「ルート」をクリックすると最上位に戻ります。"
+                size="sm"
+                className="mr-1"
+              />
               <button
                 onClick={() => setCurrentFolderId(null)}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-md whitespace-nowrap ${
@@ -648,6 +661,11 @@ export default function Home() {
 
             {/* 並び替えUI */}
             <div className="flex items-center justify-end gap-2 mb-3">
+              <HelpTip
+                title="並び替え"
+                content="画像の表示順を変更できます。ファイル名順または作成日順で並び替えられます。"
+                size="sm"
+              />
               <span className="text-xs text-gray-600">並び替え:</span>
               <select
                 value={`${sortKey}-${sortOrder}`}
@@ -824,7 +842,10 @@ export default function Home() {
               <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                 申請履歴
               </h2>
-              <HelpTip content="【ステータス】承認待ち：管理者の承認を待っています / ダウンロード可：7日以内に1回ダウンロードできます / DL済み：ダウンロード完了 / 却下：申請が却下されました / 期限切れ：ダウンロード期限が過ぎました" />
+              <HelpTip
+                title="ステータスの見方"
+                content="承認待ち：管理者の承認を待っています / ダウンロード可：7日以内に1回ダウンロードできます / DL済み：ダウンロード完了 / 却下：申請が却下されました / 期限切れ：ダウンロード期限が過ぎました"
+              />
             </div>
             {myRequests.length > 0 ? (
               <>
@@ -1128,8 +1149,12 @@ export default function Home() {
                   <div>
                     {/* 利用目的選択 */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                         利用目的 *
+                        <HelpTip
+                          content="画像をどこで使用するか選択してください。適切な目的を選ぶことで、承認がスムーズになります。"
+                          size="sm"
+                        />
                       </label>
                       <select
                         value={purposeType}
@@ -1161,8 +1186,13 @@ export default function Home() {
 
                     {/* 掲載終了日 */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                         掲載終了日 *
+                        <HelpTip
+                          title="掲載終了日とは？"
+                          content="画像の使用を終了する予定日です。この日を過ぎたら、掲載した画像を削除する必要があります。最長1年まで設定可能です。"
+                          size="sm"
+                        />
                       </label>
                       <input
                         type="date"
@@ -1179,8 +1209,12 @@ export default function Home() {
 
                     {/* 承認者へのコメント */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
                         承認者へのコメント（任意）
+                        <HelpTip
+                          content="承認者に伝えたいことがあれば入力してください。例：「緊急で使用したい」「前回と同じ用途です」など"
+                          size="sm"
+                        />
                       </label>
                       <textarea
                         value={requesterComment}
@@ -1513,7 +1547,15 @@ export default function Home() {
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900">ダウンロード確認</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900">ダウンロード確認</h3>
+                <HelpTip
+                  title="重要"
+                  content="ダウンロードは1回のみです。ダウンロード後は再ダウンロードできませんので、ファイルを大切に保存してください。"
+                  highlight
+                  size="sm"
+                />
+              </div>
               <button
                 onClick={() => setDownloadModal(null)}
                 className="text-gray-500 hover:text-gray-700"
