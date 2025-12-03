@@ -47,6 +47,8 @@ export async function POST(request: NextRequest) {
     }
 
     // DBに画像/動画情報を保存
+    // 注意: Edge Function (FFmpeg WASM) はSupabaseのDeno環境で動作しないため、
+    // 動画のサムネイル生成は無効化。ブラウザの標準プレーヤーでプレビュー表示。
     const { data, error } = await supabase
       .from('images')
       .insert({
@@ -57,20 +59,15 @@ export async function POST(request: NextRequest) {
         file_size: fileSize || 0,
         mime_type: contentType,
         file_type: isVideo ? 'video' : 'image',
-        processing_status: isVideo ? 'pending' : 'none',
+        processing_status: 'none', // サムネイル生成は無効化
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // 動画の場合はEdge Functionを呼び出してサムネイル生成
-    if (isVideo && data) {
-      // 非同期でEdge Functionを呼び出す（レスポンスを待たない）
-      triggerVideoProcessing(data.id, path, fileSize || 0).catch(err => {
-        console.error('Failed to trigger video processing:', err);
-      });
-    }
+    // 動画のサムネイル生成は現在無効化（Edge Function/FFmpegの制限のため）
+    // 将来的にクライアントサイドでのサムネイル生成を検討
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
@@ -80,38 +77,5 @@ export async function POST(request: NextRequest) {
       { success: false, error: `ファイル登録に失敗しました: ${errorMessage}` },
       { status: 500 }
     );
-  }
-}
-
-// 動画処理をトリガーする関数
-async function triggerVideoProcessing(imageId: string, storagePath: string, fileSize: number) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Missing Supabase configuration');
-    return;
-  }
-
-  try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/process-video`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-      },
-      body: JSON.stringify({
-        imageId,
-        storagePath,
-        fileSize,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Video processing trigger failed:', errorText);
-    }
-  } catch (error) {
-    console.error('Error triggering video processing:', error);
   }
 }
