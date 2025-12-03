@@ -308,6 +308,48 @@ export default function AdminGuidePage() {
         </div>
       </section>
 
+      {/* 掲載終了の確認 */}
+      <section>
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center">📅</span>
+          掲載終了の確認
+        </h2>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-bold text-gray-900 mb-2">掲載終了日とは？</h4>
+              <p className="text-sm text-gray-600">
+                ユーザーが申請時に設定した「画像の掲載を終了する予定日」です。
+                この日を過ぎたら、ユーザーは画像の使用を終了する必要があります。
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-2">自動メール通知</h4>
+              <p className="text-sm text-gray-600">
+                掲載終了日が近づくと、申請者と承認者の両方にリマインドメールが自動送信されます。
+                掲載終了日を過ぎると、削除確認を促すメールが送信されます。
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-2">削除確認の流れ</h4>
+              <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside ml-2">
+                <li><strong>申請者の確認</strong>：申請者が画像を使用場所から削除したことを確認ボタンで報告</li>
+                <li><strong>承認者の確認</strong>：管理者が削除完了を確認し、確認ボタンを押す</li>
+                <li><strong>完了</strong>：両者の確認が完了すると、申請のステータスが「完了」になります</li>
+              </ol>
+            </div>
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
+              <h4 className="font-bold text-rose-800 mb-2">⚠️ 重要</h4>
+              <ul className="text-sm text-rose-700 space-y-1 list-disc list-inside">
+                <li>掲載終了日を過ぎた申請は定期的に確認してください</li>
+                <li>削除確認が完了していない申請は「履歴」タブで確認できます</li>
+                <li>長期間確認されない場合、フォローアップが必要な場合があります</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 透かし検証 */}
       <section>
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
