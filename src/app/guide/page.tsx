@@ -47,44 +47,51 @@ export default function GuidePage() {
             <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold">1</span>
             基本的な流れ
           </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[
               {
                 step: 1,
                 icon: '🔍',
                 title: '画像を探す',
-                desc: 'フォルダを開いて使いたい画像を見つけます',
+                desc: 'フォルダから画像を見つける',
                 color: 'blue',
               },
               {
                 step: 2,
                 icon: '📝',
                 title: '申請する',
-                desc: '利用目的と掲載期限を入力して申請',
+                desc: '利用目的と掲載期限を入力',
                 color: 'emerald',
               },
               {
                 step: 3,
                 icon: '⏳',
                 title: '承認を待つ',
-                desc: '管理者が内容を確認して承認します',
+                desc: '管理者が確認・承認',
                 color: 'amber',
               },
               {
                 step: 4,
                 icon: '📥',
                 title: 'ダウンロード',
-                desc: '承認後、画像をダウンロードできます',
+                desc: '承認後に画像を取得',
                 color: 'violet',
               },
+              {
+                step: 5,
+                icon: '📅',
+                title: '掲載終了',
+                desc: '期限後に削除確認',
+                color: 'rose',
+              },
             ].map((item) => (
-              <div key={item.step} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className={`w-12 h-12 bg-${item.color}-100 rounded-xl flex items-center justify-center mb-4`}>
-                  <span className="text-2xl">{item.icon}</span>
+              <div key={item.step} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <div className={`w-10 h-10 bg-${item.color}-100 rounded-xl flex items-center justify-center mb-3`}>
+                  <span className="text-xl">{item.icon}</span>
                 </div>
                 <div className={`text-xs font-bold text-${item.color}-600 mb-1`}>STEP {item.step}</div>
-                <h4 className="font-bold text-gray-900 mb-2">{item.title}</h4>
-                <p className="text-sm text-gray-600">{item.desc}</p>
+                <h4 className="font-bold text-gray-900 mb-1 text-sm">{item.title}</h4>
+                <p className="text-xs text-gray-600">{item.desc}</p>
               </div>
             ))}
           </div>
