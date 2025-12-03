@@ -157,13 +157,13 @@ export default function AdminDashboard() {
             />
             <QuickAction
               href="/admin/images"
-              title="画像追加"
+              title="ファイル管理"
               icon="📷"
             />
             <QuickAction
-              href="/admin/folders"
-              title="フォルダ作成"
-              icon="📁"
+              href="/admin/requests"
+              title="申請確認"
+              icon="📋"
             />
             <QuickAction
               href="/admin/watermark"
