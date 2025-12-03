@@ -100,11 +100,13 @@ export default function RequestsPage() {
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
+        // 画像が削除された申請を除外
+        const validRequests = data.data.filter((r: ApprovalRequest) => r.image !== null);
         // 履歴タブの場合はpending以外を表示
         if (activeTab === 'history' && !statusFilter) {
-          setRequests(data.data.filter((r: ApprovalRequest) => r.status !== 'pending'));
+          setRequests(validRequests.filter((r: ApprovalRequest) => r.status !== 'pending'));
         } else {
-          setRequests(data.data);
+          setRequests(validRequests);
         }
       }
     } catch (error) {

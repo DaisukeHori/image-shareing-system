@@ -248,7 +248,11 @@ export default function Home() {
         setBreadcrumbs(buildBreadcrumbs(currentFolderId, foldersData.flat || []));
       }
       if (imagesData.success) setImages(imagesData.data);
-      if (requestsData.success) setMyRequests(requestsData.data);
+      if (requestsData.success) {
+        // 画像が削除された申請を除外
+        const validRequests = requestsData.data.filter((r: ApprovalRequest) => r.image !== null);
+        setMyRequests(validRequests);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
