@@ -100,15 +100,28 @@ export async function POST(request: NextRequest) {
       const line = dataLines[i];
       const lineNumber = i + 2; // ヘッダー行 + 0-indexed
 
-      // CSV解析（簡易版：ダブルクォート対応）
-      const matches = line.match(/("([^"]*)"|[^,]*)/g);
-      if (!matches || matches.length < 1) {
+      // タブ区切りかカンマ区切りかを判定して解析
+      let fields: string[];
+      if (line.includes('\t')) {
+        // タブ区切り（TSV）
+        fields = line.split('\t').map(f => f.replace(/^"|"$/g, '').trim());
+      } else {
+        // CSV解析（簡易版：ダブルクォート対応）
+        const matches = line.match(/("([^"]*)"|[^,]*)/g);
+        if (!matches) {
+          results.errors.push(`行${lineNumber}: 形式が不正です`);
+          continue;
+        }
+        fields = matches.map(f => f.replace(/^"|"$/g, '').trim());
+      }
+
+      if (fields.length < 1) {
         results.errors.push(`行${lineNumber}: 形式が不正です`);
         continue;
       }
 
-      const name = matches[0]?.replace(/^"|"$/g, '').trim();
-      const managerEmail = matches[1]?.replace(/^"|"$/g, '').trim() || '';
+      const name = fields[0] || '';
+      const managerEmail = fields[1] || '';
 
       if (!name) {
         results.errors.push(`行${lineNumber}: 所属名が空です`);

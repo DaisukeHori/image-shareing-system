@@ -110,19 +110,32 @@ export async function POST(request: NextRequest) {
       const line = dataLines[i];
       const lineNumber = i + 2; // ヘッダー行 + 0-indexed
 
-      // CSV解析（簡易版：ダブルクォート対応）
-      const matches = line.match(/("([^"]*)"|[^,]*)/g);
-      if (!matches || matches.length < 2) {
+      // タブ区切りかカンマ区切りかを判定して解析
+      let fields: string[];
+      if (line.includes('\t')) {
+        // タブ区切り（TSV）
+        fields = line.split('\t').map(f => f.replace(/^"|"$/g, '').trim());
+      } else {
+        // CSV解析（簡易版：ダブルクォート対応）
+        const matches = line.match(/("([^"]*)"|[^,]*)/g);
+        if (!matches) {
+          results.errors.push(`行${lineNumber}: 形式が不正です`);
+          continue;
+        }
+        fields = matches.map(f => f.replace(/^"|"$/g, '').trim());
+      }
+
+      if (fields.length < 2) {
         results.errors.push(`行${lineNumber}: 形式が不正です`);
         continue;
       }
 
-      const email = matches[0]?.replace(/^"|"$/g, '').trim();
-      const name = matches[1]?.replace(/^"|"$/g, '').trim();
-      const departmentName = matches[2]?.replace(/^"|"$/g, '').trim() || '';
-      const role = matches[3]?.replace(/^"|"$/g, '').trim() || 'user';
-      const isCeoStr = matches[4]?.replace(/^"|"$/g, '').trim() || '';
-      const isActiveStr = matches[5]?.replace(/^"|"$/g, '').trim() || '';
+      const email = fields[0] || '';
+      const name = fields[1] || '';
+      const departmentName = fields[2] || '';
+      const role = fields[3] || 'user';
+      const isCeoStr = fields[4] || '';
+      const isActiveStr = fields[5] || '';
 
       if (!email) {
         results.errors.push(`行${lineNumber}: メールアドレスが空です`);
