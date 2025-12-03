@@ -13,7 +13,6 @@ interface RequestRecord {
   purpose_type: string | null;
   purpose_other: string | null;
   requester_comment: string | null;
-  usage_end_date: string | null;
   status: string;
   approver: { name: string } | null;
   approved_at: string | null;
@@ -21,8 +20,6 @@ interface RequestRecord {
   approver_comment: string | null;
   expires_at: string | null;
   downloaded_at: string | null;
-  deletion_confirmed_user: boolean;
-  deletion_confirmed_approver: boolean;
   created_at: string;
 }
 
@@ -111,7 +108,6 @@ export async function GET(request: NextRequest) {
       '利用目的タイプ',
       '利用目的詳細',
       '申請者コメント',
-      '掲載終了日',
       'ステータス',
       '承認者',
       '承認日時',
@@ -119,8 +115,6 @@ export async function GET(request: NextRequest) {
       '承認者コメント',
       'ダウンロード期限',
       'ダウンロード日時',
-      '掲載終了確認(申請者)',
-      '掲載終了確認(承認者)',
       '申請日時',
     ];
 
@@ -137,7 +131,6 @@ export async function GET(request: NextRequest) {
         purposeType,
         purposeDetail,
         req.requester_comment || '',
-        req.usage_end_date ? format(new Date(req.usage_end_date), 'yyyy/MM/dd') : '',
         statusLabels[req.status] || req.status,
         req.approver?.name || '',
         req.approved_at ? format(new Date(req.approved_at), 'yyyy/MM/dd HH:mm') : '',
@@ -145,8 +138,6 @@ export async function GET(request: NextRequest) {
         req.approver_comment || '',
         req.expires_at ? format(new Date(req.expires_at), 'yyyy/MM/dd HH:mm') : '',
         req.downloaded_at ? format(new Date(req.downloaded_at), 'yyyy/MM/dd HH:mm') : '',
-        req.deletion_confirmed_user ? '確認済み' : '',
-        req.deletion_confirmed_approver ? '確認済み' : '',
         req.created_at ? format(new Date(req.created_at), 'yyyy/MM/dd HH:mm') : '',
       ];
     });

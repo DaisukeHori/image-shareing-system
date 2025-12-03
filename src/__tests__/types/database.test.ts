@@ -185,7 +185,6 @@ describe('Database Types', () => {
         purpose: 'SNS投稿用',
         purpose_type: 'sns',
         purpose_other: null,
-        usage_end_date: '2025-06-02',
         agreed_to_terms: true,
         requester_comment: '急ぎでお願いします',
         approver_comment: null,
@@ -198,11 +197,6 @@ describe('Database Types', () => {
         expires_at: null,
         downloaded_at: null,
         download_count: 0,
-        deletion_confirmed_user: false,
-        deletion_confirmed_user_at: null,
-        deletion_confirmed_approver: false,
-        deletion_confirmed_approver_at: null,
-        deletion_reminder_sent_at: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T00:00:00Z',
       };
@@ -222,7 +216,6 @@ describe('Database Types', () => {
         purpose: 'SNS投稿用',
         purpose_type: 'sns',
         purpose_other: null,
-        usage_end_date: '2025-06-02',
         agreed_to_terms: true,
         requester_comment: null,
         approver_comment: '承認しました。利用規約を守ってください。',
@@ -235,11 +228,6 @@ describe('Database Types', () => {
         expires_at: '2024-12-09T10:00:00Z',
         downloaded_at: null,
         download_count: 0,
-        deletion_confirmed_user: false,
-        deletion_confirmed_user_at: null,
-        deletion_confirmed_approver: false,
-        deletion_confirmed_approver_at: null,
-        deletion_reminder_sent_at: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T10:00:00Z',
       };
@@ -258,7 +246,6 @@ describe('Database Types', () => {
         purpose: 'SNS投稿用',
         purpose_type: 'sns',
         purpose_other: null,
-        usage_end_date: '2025-06-02',
         agreed_to_terms: true,
         requester_comment: null,
         approver_comment: null,
@@ -271,11 +258,6 @@ describe('Database Types', () => {
         expires_at: '2024-12-09T10:00:00Z',
         downloaded_at: '2024-12-02T11:00:00Z',
         download_count: 1,
-        deletion_confirmed_user: false,
-        deletion_confirmed_user_at: null,
-        deletion_confirmed_approver: false,
-        deletion_confirmed_approver_at: null,
-        deletion_reminder_sent_at: null,
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-12-02T11:00:00Z',
       };
@@ -285,7 +267,7 @@ describe('Database Types', () => {
       expect(request.downloaded_at).not.toBeNull();
     });
 
-    it('should track deletion confirmation', () => {
+    it('should track purpose type other', () => {
       const request: ApprovalRequest = {
         id: 'req-id',
         request_number: 'REQ-20241202-0001',
@@ -294,7 +276,6 @@ describe('Database Types', () => {
         purpose: 'その他: テスト利用',
         purpose_type: 'other',
         purpose_other: 'テスト利用',
-        usage_end_date: '2024-11-01',
         agreed_to_terms: true,
         requester_comment: 'テスト用に使います',
         approver_comment: 'テスト利用を承認しました',
@@ -307,17 +288,10 @@ describe('Database Types', () => {
         expires_at: '2024-12-09T10:00:00Z',
         downloaded_at: '2024-12-02T11:00:00Z',
         download_count: 1,
-        deletion_confirmed_user: true,
-        deletion_confirmed_user_at: '2024-11-02T10:00:00Z',
-        deletion_confirmed_approver: true,
-        deletion_confirmed_approver_at: '2024-11-02T11:00:00Z',
-        deletion_reminder_sent_at: '2024-11-02T05:00:00Z',
         created_at: '2024-12-02T00:00:00Z',
         updated_at: '2024-11-02T11:00:00Z',
       };
 
-      expect(request.deletion_confirmed_user).toBe(true);
-      expect(request.deletion_confirmed_approver).toBe(true);
       expect(request.purpose_type).toBe('other');
       expect(request.purpose_other).toBe('テスト利用');
     });

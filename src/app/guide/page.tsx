@@ -47,7 +47,7 @@ export default function GuidePage() {
             <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold">1</span>
             基本的な流れ
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               {
                 step: 1,
@@ -60,7 +60,7 @@ export default function GuidePage() {
                 step: 2,
                 icon: '📝',
                 title: '申請する',
-                desc: '利用目的と掲載期限を入力',
+                desc: '利用目的を選択',
                 color: 'emerald',
               },
               {
@@ -76,13 +76,6 @@ export default function GuidePage() {
                 title: 'ダウンロード',
                 desc: '承認後に画像を取得',
                 color: 'violet',
-              },
-              {
-                step: 5,
-                icon: '📅',
-                title: '掲載終了',
-                desc: '期限後に削除確認',
-                color: 'rose',
               },
             ].map((item) => (
               <div key={item.step} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -212,15 +205,6 @@ export default function GuidePage() {
               <div className="flex items-start gap-4">
                 <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0">3</div>
                 <div>
-                  <h4 className="font-bold text-gray-900 mb-1">掲載終了日を設定</h4>
-                  <p className="text-sm text-gray-600">
-                    画像の掲載を終了する予定日を設定します。最長1年まで設定可能です。
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0">4</div>
-                <div>
                   <h4 className="font-bold text-gray-900 mb-1">同意書を確認して申請</h4>
                   <p className="text-sm text-gray-600">
                     利用規約をよく読み、同意のうえ申請してください。同意書は最後までスクロールする必要があります。
@@ -276,58 +260,6 @@ export default function GuidePage() {
           </div>
         </section>
 
-        {/* 掲載終了の確認 */}
-        <section className="mb-12">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center text-rose-600 font-bold">📅</span>
-            掲載終了日について
-          </h3>
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
-                  <span className="text-xl">📧</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900 mb-1">メールでお知らせが届きます</h4>
-                  <p className="text-sm text-gray-600">
-                    掲載終了日が近づくと、リマインドメールが届きます。
-                    期日を過ぎると、画像の削除確認を促すメールが届きます。
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
-                  <span className="text-xl">🗑️</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900 mb-1">使用場所から画像を削除</h4>
-                  <p className="text-sm text-gray-600">
-                    掲載終了日を過ぎたら、ホットペッパーやSNSなど使用していた場所から画像を削除してください。
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
-                  <span className="text-xl">✅</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900 mb-1">削除確認ボタンを押す</h4>
-                  <p className="text-sm text-gray-600">
-                    画像を削除したら、メール内のリンクまたは申請履歴から「削除確認」ボタンを押してください。
-                    管理者も確認ボタンを押すと、申請が完了となります。
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <p className="text-sm text-amber-700">
-                💡 両者（あなたと管理者）の確認が完了するまで、申請は「掲載終了待ち」の状態になります
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* 注意事項 */}
         <section className="mb-12">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -342,15 +274,6 @@ export default function GuidePage() {
                   <h4 className="font-bold text-red-800 mb-1">申請した目的以外には使用しないでください</h4>
                   <p className="text-sm text-red-700">
                     ホットペッパー用に申請した画像をSNSで使用するなど、目的外利用は禁止です。
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-red-500 text-lg">⚠️</span>
-                <div>
-                  <h4 className="font-bold text-red-800 mb-1">掲載期限を守ってください</h4>
-                  <p className="text-sm text-red-700">
-                    設定した掲載終了日を過ぎたら、速やかに画像を削除してください。
                   </p>
                 </div>
               </div>
@@ -399,10 +322,6 @@ export default function GuidePage() {
               {
                 q: '同じ画像を複数の目的で使いたい場合は？',
                 a: '目的ごとに別々に申請してください。それぞれ承認が必要です。',
-              },
-              {
-                q: '掲載期限を延長したい場合は？',
-                a: '新しく申請し直す必要があります。現在の申請の掲載終了確認後、再申請してください。',
               },
               {
                 q: '一部のフォルダが見えません',

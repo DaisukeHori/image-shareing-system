@@ -30,7 +30,6 @@ interface ApprovalRequest {
   purpose: string;
   purpose_type: PurposeType | null;
   purpose_other: string | null;
-  usage_end_date: string | null;
   requester_comment: string | null;
   approver_comment: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'expired' | 'downloaded';
@@ -40,8 +39,6 @@ interface ApprovalRequest {
   rejection_reason: string | null;
   expires_at: string | null;
   downloaded_at: string | null;
-  deletion_confirmed_user: boolean;
-  deletion_confirmed_approver: boolean;
   created_at: string;
 }
 
@@ -74,7 +71,6 @@ export default function RequestsPage() {
   const [detailModal, setDetailModal] = useState<ApprovalRequest | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; filename: string; isVideo: boolean } | null>(null);
   const [resultModal, setResultModal] = useState<{ type: 'approve' | 'reject'; requestNumber: string } | null>(null);
-  const [confirmingDeletionId, setConfirmingDeletionId] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
 
   const [exportLoading, setExportLoading] = useState(false);
@@ -112,34 +108,6 @@ export default function RequestsPage() {
       console.error('Failed to fetch requests:', error);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleConfirmDeletion(requestId: string) {
-    setConfirmingDeletionId(requestId);
-    try {
-      const res = await fetch('/api/admin/requests/confirm-deletion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchRequests();
-      } else {
-        setErrorModal({
-          title: '確認できません',
-          message: data.error || '確認に失敗しました',
-        });
-      }
-    } catch (error) {
-      console.error('Confirm deletion error:', error);
-      setErrorModal({
-        title: 'エラー',
-        message: '確認に失敗しました',
-      });
-    } finally {
-      setConfirmingDeletionId(null);
     }
   }
 
@@ -217,14 +185,6 @@ export default function RequestsPage() {
 
   function formatDateOnly(dateString: string) {
     return new Date(dateString).toLocaleDateString('ja-JP');
-  }
-
-  // 掲載期限切れかどうかをチェック（掲載終了日の翌日0時以降が期限切れ）
-  function isExpiredUsage(usageEndDate: string | null) {
-    if (!usageEndDate) return false;
-    const endDate = new Date(usageEndDate);
-    endDate.setDate(endDate.getDate() + 1); // 翌日の0時
-    return new Date() >= endDate;
   }
 
   function getImageUrl(storagePath: string) {
@@ -454,9 +414,7 @@ export default function RequestsPage() {
         {requests.map((request) => (
           <div
             key={request.id}
-            className={`bg-white shadow rounded-lg p-4 ${
-              isExpiredUsage(request.usage_end_date) && request.status === 'downloaded' ? 'border-l-4 border-red-500' : ''
-            }`}
+            className="bg-white shadow rounded-lg p-4"
           >
             <div className="flex gap-3 mb-3">
               {request.image ? (
@@ -527,12 +485,6 @@ export default function RequestsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">掲載終了日</p>
-                <p className={`${isExpiredUsage(request.usage_end_date) ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
-                  {request.usage_end_date ? formatDateOnly(request.usage_end_date) : '-'}
-                </p>
-              </div>
-              <div>
                 <p className="text-xs text-gray-500">申請日</p>
                 <p className="text-gray-900">{formatDateOnly(request.created_at)}</p>
               </div>
@@ -547,30 +499,6 @@ export default function RequestsPage() {
             {request.rejection_reason && (
               <div className="mb-3 p-2 bg-red-50 rounded text-xs text-red-600">
                 却下理由: {request.rejection_reason}
-              </div>
-            )}
-
-            {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && (
-              <div className="mb-3 text-xs">
-                {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
-                  <span className="text-green-600">削除確認済</span>
-                ) : (
-                  <>
-                    <span className="text-red-600 block mb-2">
-                      {!request.deletion_confirmed_user && '本人未確認 '}
-                      {!request.deletion_confirmed_approver && '承認者未確認'}
-                    </span>
-                    {!request.deletion_confirmed_approver && (
-                      <button
-                        onClick={() => handleConfirmDeletion(request.id)}
-                        disabled={confirmingDeletionId === request.id}
-                        className="w-full px-3 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                      >
-                        {confirmingDeletionId === request.id ? '確認中...' : '掲載終了を確認'}
-                      </button>
-                    )}
-                  </>
-                )}
               </div>
             )}
 
@@ -644,9 +572,6 @@ export default function RequestsPage() {
                 利用目的
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                掲載終了日
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ステータス
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -659,7 +584,7 @@ export default function RequestsPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {requests.map((request) => (
-              <tr key={request.id} className={isExpiredUsage(request.usage_end_date) && request.status === 'downloaded' ? 'bg-red-50' : ''}>
+              <tr key={request.id}>
                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <button
                     onClick={() => setDetailModal(request)}
@@ -735,30 +660,6 @@ export default function RequestsPage() {
                   )}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  {request.usage_end_date ? (
-                    <div className={`text-sm ${isExpiredUsage(request.usage_end_date) ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
-                      {formatDateOnly(request.usage_end_date)}
-                      {isExpiredUsage(request.usage_end_date) && (
-                        <span className="block text-xs">期限切れ</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                  {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && (
-                    <div className="text-xs mt-1">
-                      {request.deletion_confirmed_user && request.deletion_confirmed_approver ? (
-                        <span className="text-green-600">削除確認済</span>
-                      ) : (
-                        <span className="text-red-600">
-                          {!request.deletion_confirmed_user && '本人未確認 '}
-                          {!request.deletion_confirmed_approver && '承認者未確認'}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
                   <span
                     className={`px-2 py-1 text-xs rounded ${statusLabels[request.status].class}`}
                   >
@@ -812,16 +713,7 @@ export default function RequestsPage() {
                       </button>
                     </div>
                   )}
-                  {request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && !request.deletion_confirmed_approver && (
-                    <button
-                      onClick={() => handleConfirmDeletion(request.id)}
-                      disabled={confirmingDeletionId === request.id}
-                      className="px-3 py-1 text-xs font-medium text-white bg-orange-600 rounded hover:bg-orange-700 disabled:opacity-50"
-                    >
-                      {confirmingDeletionId === request.id ? '確認中...' : '掲載終了確認'}
-                    </button>
-                  )}
-                  {request.status !== 'pending' && !(request.status === 'downloaded' && request.usage_end_date && isExpiredUsage(request.usage_end_date) && !request.deletion_confirmed_approver) && (
+                  {request.status !== 'pending' && (
                     <span className="text-xs text-gray-400">-</span>
                   )}
                 </td>
@@ -829,7 +721,7 @@ export default function RequestsPage() {
             ))}
             {requests.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-full flex items-center justify-center">
                     <span className="text-3xl">{activeTab === 'pending' ? '✨' : '📋'}</span>
                   </div>
@@ -1040,12 +932,6 @@ export default function RequestsPage() {
                   {detailModal.purpose_other && (
                     <p className="text-xs text-gray-500">{detailModal.purpose_other}</p>
                   )}
-                </div>
-                <div>
-                  <p className="text-gray-500">掲載終了日</p>
-                  <p className={`font-medium ${detailModal.usage_end_date && isExpiredUsage(detailModal.usage_end_date) ? 'text-red-600' : ''}`}>
-                    {detailModal.usage_end_date ? formatDateOnly(detailModal.usage_end_date) : '-'}
-                  </p>
                 </div>
               </div>
 

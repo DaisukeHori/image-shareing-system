@@ -59,12 +59,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { image_id, purpose_type, purpose_other, usage_end_date, requester_comment, agreed_to_terms } = body;
+    const { image_id, purpose_type, purpose_other, requester_comment, agreed_to_terms } = body;
 
     // バリデーション
-    if (!image_id || !purpose_type || !usage_end_date) {
+    if (!image_id || !purpose_type) {
       return NextResponse.json(
-        { success: false, error: '画像、利用目的、掲載終了日は必須です' },
+        { success: false, error: '画像と利用目的は必須です' },
         { status: 400 }
       );
     }
@@ -89,23 +89,6 @@ export async function POST(request: NextRequest) {
     if (purpose_type === 'other' && !purpose_other?.trim()) {
       return NextResponse.json(
         { success: false, error: 'その他の利用目的の詳細を入力してください' },
-        { status: 400 }
-      );
-    }
-
-    // 掲載終了日のバリデーション（明日から1年以内）
-    const endDate = new Date(usage_end_date);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-
-    const maxDate = new Date();
-    maxDate.setFullYear(maxDate.getFullYear() + 1);
-    maxDate.setHours(23, 59, 59, 999);
-
-    if (endDate < tomorrow || endDate > maxDate) {
-      return NextResponse.json(
-        { success: false, error: '掲載終了日は明日から1年以内で指定してください' },
         { status: 400 }
       );
     }
@@ -201,7 +184,6 @@ export async function POST(request: NextRequest) {
         purpose,
         purpose_type,
         purpose_other: purpose_type === 'other' ? purpose_other : null,
-        usage_end_date,
         requester_comment: requester_comment?.trim() || null,
         agreed_to_terms: true,
       })
