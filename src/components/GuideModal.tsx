@@ -1,11 +1,14 @@
 'use client';
 
+import Link from 'next/link';
+
 interface GuideModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
-export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
+export default function GuideModal({ isOpen, onClose, isAdmin = false }: GuideModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -63,6 +66,16 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                     <p className="text-xs font-medium text-gray-900">{item.title}</p>
                   </div>
                 ))}
+              </div>
+              {/* 承認待ちの補足説明 */}
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-600">⏳</span>
+                  <div className="text-xs text-amber-800">
+                    <p className="font-medium mb-1">承認を待つ（STEP 3）について</p>
+                    <p>申請後、管理者が内容を確認して承認・却下を行います。承認されるとメールで通知が届き、ダウンロードが可能になります。</p>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -135,6 +148,51 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                 ))}
               </div>
             </section>
+
+            {/* 管理者向けセクション */}
+            {isAdmin && (
+              <section>
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 text-sm">⚙️</span>
+                  管理者の方へ
+                </h3>
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+                  <p className="text-sm text-indigo-900">
+                    あなたは<span className="font-bold text-indigo-700">管理者権限</span>をお持ちです。ユーザーからの画像利用申請を承認・却下できます。
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-indigo-700">管理画面でできること:</p>
+                    <ul className="text-xs text-indigo-800 space-y-1 ml-4">
+                      <li>• ユーザーからの申請を承認・却下</li>
+                      <li>• ユーザー管理（権限の付与など）</li>
+                      <li>• フォルダ・画像の管理</li>
+                      <li>• 申請履歴の確認・CSV出力</li>
+                    </ul>
+                  </div>
+                  <Link
+                    href="/admin"
+                    onClick={onClose}
+                    className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    管理画面を開く
+                  </Link>
+                  <Link
+                    href="/admin/requests"
+                    onClick={onClose}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 transition-all text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    承認申請を管理する
+                  </Link>
+                </div>
+              </section>
+            )}
           </div>
 
           {/* フッター */}

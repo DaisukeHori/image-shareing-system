@@ -1857,7 +1857,7 @@ export default function Home() {
       )}
 
       {/* 使い方ガイドモーダル */}
-      <GuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
+      <GuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} isAdmin={session?.user?.role === 'admin'} />
     </div>
   );
 }
