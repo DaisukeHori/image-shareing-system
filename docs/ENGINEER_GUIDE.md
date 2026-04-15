@@ -338,7 +338,6 @@ export default auth((req) => {
 | GET | `/api/requests` | 自分の申請一覧取得 |
 | POST | `/api/requests` | 新規申請作成 |
 | DELETE | `/api/requests/[id]` | 申請キャンセル（pending時のみ） |
-| POST | `/api/requests/confirm-deletion` | 掲載終了確認（ユーザー） |
 | POST | `/api/approval/action` | メールリンクからの承認/却下 |
 | POST | `/api/download/[requestId]` | 透かし付きダウンロード |
 
@@ -390,7 +389,6 @@ export default auth((req) => {
 |----------|------|------|
 | GET | `/api/admin/requests` | 全申請一覧 |
 | POST | `/api/admin/requests` | 承認/却下処理 |
-| POST | `/api/admin/requests/confirm-deletion` | 掲載終了確認（管理者） |
 
 ### その他
 | メソッド | パス | 説明 |
